@@ -230,6 +230,27 @@
     });
     return out;
   }
+  // "flat renovation", "ristrutturare casa", "médico" → the ready-made packs and CILS topics that fit, best first
+  const STOP = new Set("the and for with about my our your a an of to in on at il lo la le gli i di da del della per con un una el los las de y en mi".split(" "));
+  const words = s => strip(s.toLowerCase()).replace(/[^a-z0-9' ]+/g, " ").split(/[ ']+/).filter(t => t.length > 2 && !STOP.has(t));
+  const near = (a, b) => a === b || (a.length > 3 && b.length > 3 && (a.startsWith(b) || b.startsWith(a)));
+  function findTopics(query) {
+    const q = words(query);
+    if (!q.length) return [];
+    const C = window.IIG_CONTENT();
+    const phrase = strip(query.toLowerCase().trim());
+    const score = keys => {
+      const toks = keys.flatMap(words);
+      let n = keys.some(k => strip(k.toLowerCase()) === phrase) ? 5 : 0;
+      q.forEach(t => { if (toks.some(k => near(t, k))) n += 2; });
+      return n;
+    };
+    const packs = C.packs.map(p => ({ name: p.name, words: p.words, score: score([p.name].concat(p.keys)) + 1 }));
+    const cils = LEVELS.flatMap(l => C.levels[l].topics.filter(t => t.name !== "Verbs")
+      .map(t => ({ name: t.name, level: l, words: t.words.map(w => ({ it: w.it, g: w.g, en: w.en, es: w.es })), score: score([t.name]) })));
+    return packs.concat(cils).filter(t => t.score > 1).sort((a, b) => b.score - a.score || (a.level ? 1 : 0) - (b.level ? 1 : 0)).slice(0, 5);
+  }
+
   function cleanWord(w) {
     const o = { it: (w.it || "").trim() };
     if (w.g === "m" || w.g === "f") o.g = w.g;
@@ -270,6 +291,6 @@
     plan, markStreak, streak, streakOf, setSetting, setLevel, setName, setBest, setGroups, teaching, shuffle, esc,
     LEVEL_UP, levelProgress, checkLevelUp, whenLevelUp, place, tr,
     listWords, myListWords, wordPool, drillPool, drillPlan, norm, check, checkForm, say, canSpeak,
-    parseList, saveList, deleteList
+    parseList, saveList, deleteList, findTopics
   };
 })();

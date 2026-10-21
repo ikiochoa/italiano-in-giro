@@ -291,3 +291,8 @@ details.later .conj { opacity: .7; }
 .icon-btn.sm { width: 34px; height: 34px; }
 .icon-btn.sm svg { width: 16px; height: 16px; }
 @media (max-width: 380px) { .wed-tr { grid-template-columns: 1fr; } }
+
+/* add words: topic suggestions */
+#sugg { margin-bottom: 8px; }
+#sugg .btn { margin-top: 12px; }
+#sugg .note:empty { display: none; }

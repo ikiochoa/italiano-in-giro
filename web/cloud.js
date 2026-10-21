@@ -190,6 +190,24 @@
   };
   CLOUD.refreshGroups = refreshGroups;
 
+  // ---------- words for any topic, written by Claude (netlify/functions/topic-words.mjs) ----------
+  // → { words: [{ it, g, en, es }] } or { error: signed_out | no_group | not_configured | failed | no_words | network }
+  CLOUD.topicWords = async function (topic, level, have) {
+    try {
+      const { data } = await sb.auth.getSession();
+      if (!data.session) return { error: "signed_out" };
+      const r = await fetch("/api/topic-words", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer " + data.session.access_token },
+        body: JSON.stringify({ topic, level, have })
+      });
+      const body = await r.json().catch(() => ({}));
+      return body.words || body.error ? body : { error: r.status === 404 ? "not_configured" : "failed" };
+    } catch (e) {
+      return { error: "network" };
+    }
+  };
+
   if (sb) sb.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_IN" && session && !uid) begin(session.user);
   });

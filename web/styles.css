@@ -296,3 +296,41 @@ details.later .conj { opacity: .7; }
 #sugg { margin-bottom: 8px; }
 #sugg .btn { margin-top: 12px; }
 #sugg .note:empty { display: none; }
+
+/* the weekly race */
+.race { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.race li { display: flex; align-items: center; gap: 10px; }
+.race .rank { width: 1.6em; text-align: center; font-weight: 700; color: var(--ink-3); flex: none; }
+.race .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.race .pts { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--verde); }
+.race .pts small { font-size: .7rem; font-weight: 600; color: var(--ink-3); margin-left: 2px; }
+.race.big { margin-top: 14px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; box-shadow: var(--shadow); gap: 14px; }
+.race.big li.is-me { background: var(--paper-2); margin: -6px -8px; padding: 6px 8px; border-radius: var(--r-sm); }
+.race .meta, .progress-list .meta { display: block; font-size: .8rem; color: var(--ink-2); }
+.race-bar { display: block; height: 6px; margin: 5px 0 3px; border-radius: 99px; background: var(--rule); overflow: hidden; }
+.race-bar i { display: block; height: 100%; background: var(--verde); border-radius: 99px; min-width: 2px; }
+.race-bar.goal i { background: var(--masc); }
+.race-mini { display: grid; gap: 10px; margin-bottom: 4px; }
+.race-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.race-head .note { margin: 0; font-size: .8rem; }
+.challenge-line { margin: 0; font-size: .9rem; }
+.challenge h3 { margin: 4px 0 2px; }
+.challenge .members { margin: 12px 0; }
+.challenge .who { display: block; }
+.tag.ok { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); text-transform: none; letter-spacing: 0; }
+.last-week { margin: 14px 2px 0; font-weight: 600; }
+.streak-nudge { margin: 0 0 10px; font-weight: 600; color: var(--warn); }
+
+/* progress side by side */
+.progress-list { gap: 16px; }
+.progress-list li { align-items: flex-start; }
+.progress-list .who { display: block; }
+.lvl.sm { margin: 6px 0 4px; }
+.lvl.sm .lvl-tag { font-size: .75rem; padding: 1px 7px; }
+.lvl.sm .lvl-bar { height: 8px; }
+.cells { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; margin: 4px 0 2px; }
+.cell { font-size: .66rem; font-weight: 700; text-align: center; padding: 2px 0; border-radius: 5px; color: var(--ink-2);
+  background: color-mix(in srgb, var(--verde) calc(var(--v) * 85%), var(--rule)); }
+.cell[style*="--v:1.00"], .cell[style*="--v:0.9"], .cell[style*="--v:0.8"], .cell[style*="--v:0.7"], .cell[style*="--v:0.6"] { color: #fff; }
+.cell.now { outline: 2px solid var(--ink); outline-offset: -1px; }
+.form-err:empty { display: none; }

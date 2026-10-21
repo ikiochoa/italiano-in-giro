@@ -12,7 +12,10 @@
   const blank = () => ({
     p: {}, streak: { last: -1, n: 0 }, set: defaults(), level: "A1", best: {},
     lists: [],     // lists added by this person or shared with their group
-    groups: []     // [{ id, name, join_code, teacher_id, role, members: [{ id, display_name, avatar_url, role, level, streak_n, streak_last }] }]
+    groups: [],    // [{ id, name, join_code, teacher_id, role, members: [{ id, display_name, avatar_url, role, level, streak_n, streak_last, stats }] }]
+    boards: {},    // last weekly race fetched per group (cloud.js), shown at once and offline
+    up: null,      // { level, at }: the last time you moved up, shown to your group
+    sentStats: ""  // the progress summary last saved to your profile
   });
   const S = blank();
   let KEY = null;
@@ -42,7 +45,10 @@
       level: profile.level || "A1",
       best: profile.best || {},
       lists: lists.map(l => ({ id: l.id, owner_id: l.owner_id, group_id: l.group_id, kind: l.kind, title: l.title, level: l.level, topic: l.topic, words: l.words || [] })),
-      groups
+      groups,
+      boards: S.boards,
+      up: (profile.stats || {}).up || null,
+      sentStats: JSON.stringify(profile.stats || {})
     });
     save();
   }
@@ -70,7 +76,32 @@
     checkLevelUp();
   }
   function logAnswer(w, correct, kind) { emit("answer", { word_id: w.id, correct: !!correct, kind }); }
-  function logSession(row) { emit("session", row); }
+  function logSession(row) { emit("session", row); publishStats(); }
+
+  // how far along each level you are, saved to your profile so your group can compare
+  function stats() {
+    const lv = {};
+    LEVELS.forEach(l => { lv[l] = Math.round(levelProgress(l).share * 1000) / 1000; });
+    const o = { lv, known: Object.values(S.p).filter(x => x.b >= 3).length };
+    if (S.up) o.up = S.up;
+    return o;
+  }
+  function publishStats() {
+    const st = stats(), js = JSON.stringify(st);
+    if (js === S.sentStats) return;
+    S.sentStats = js;
+    save();
+    emit("profile", { stats: st });
+  }
+
+  // the race week starts on Monday at midnight, your time
+  function weekStart(offset) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - (d.getDay() + 6) % 7 + 7 * (offset || 0));
+    return d;
+  }
+  const isoDay = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 
   function markStreak() {
     const t = today();
@@ -79,6 +110,7 @@
     S.streak.last = t;
     save();
     emit("profile", { streak_n: S.streak.n, streak_last: S.streak.last });
+    if (S.streak.n > (S.best.streak || 0)) setBest("streak", S.streak.n);
   }
   // a streak counts while the last session was today or yesterday
   function streakOf(n, last) { return last >= today() - 1 ? n : 0; }
@@ -104,7 +136,9 @@
     let i = LEVELS.indexOf(S.level), moved = false;
     while (i < LEVELS.length - 1 && levelProgress(LEVELS[i]).share >= LEVEL_UP - 1e-9) { i++; moved = true; }
     if (!moved) return;
+    S.up = { level: LEVELS[i], at: new Date().toISOString() };
     setLevel(LEVELS[i]);
+    publishStats();
     if (onLevelUp) onLevelUp(LEVELS[i]);
   }
   function whenLevelUp(fn) { onLevelUp = fn; }
@@ -117,6 +151,7 @@
     });
     save();
     if (LEVELS.indexOf(level) > LEVELS.indexOf(S.level)) setLevel(level);
+    publishStats();
   }
   function tr(w, lang) { lang = lang || S.set.lang; return w[lang] || w.en || w.es || ""; }
   function setName(n) { emit("profile", { display_name: n }); }
@@ -280,6 +315,7 @@
   // ---------- groups ----------
   // groups are created and joined on the server (cloud.js); this keeps the local copy in step
   function setGroups(groups) { S.groups = groups; save(); }
+  function setBoard(groupId, board) { S.boards[groupId] = board; save(); }
   function teaching() { return S.groups.filter(g => g.role === "teacher"); }
 
   // ---------- helpers ----------
@@ -291,6 +327,6 @@
     plan, markStreak, streak, streakOf, setSetting, setLevel, setName, setBest, setGroups, teaching, shuffle, esc,
     LEVEL_UP, levelProgress, checkLevelUp, whenLevelUp, place, tr,
     listWords, myListWords, wordPool, drillPool, drillPlan, norm, check, checkForm, say, canSpeak,
-    parseList, saveList, deleteList, findTopics
+    parseList, saveList, deleteList, findTopics, stats, publishStats, weekStart, isoDay, setBoard
   };
 })();

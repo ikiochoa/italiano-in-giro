@@ -12,6 +12,7 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
   - `learn.js` – word lists by topic, verb tables, placement quiz, level-ups
   - `play.js` – practice sessions (words) and the conjugation drill
   - `lists.js` – your own word lists; teachers can give a list to their group
+  - `race.js` – the weekly race, progress side by side, and the teacher's weekly challenge
   - `content.js` + `levels/A1.js` … `levels/C2.js` – the built-in CILS word lists
   - `verbs.js` – 149 common verbs with conjugations (generated, see below)
   - `topics.js` – ready-made topic packs (flat renovation, doctor, bank…) suggested when you add words
@@ -53,14 +54,24 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
   don't want, and save. **✨ More words** on a list asks Claude for more on the same topic. Or paste your own words.
 - **Points:** 10 per answer right first time plus 20 for finishing, saved with each session for the weekly race.
 
+## Motivation
+
+- **Streak:** practise once a day to keep it going; the home screen warns you when it ends tonight, and keeps your best.
+- **Weekly race:** everyone in the group collects points from Monday 00:00 to Sunday night (your time). The home screen
+  shows the top three and you; **See the race and progress** shows everyone, their sessions and streaks, and last week's winner.
+- **Progress side by side:** each person's way to the next level, and how far they are in every CILS level.
+  Moving up a level shows a 🎉 to the group for a week.
+- **Weekly challenge:** the teacher sets a goal for the week (points to reach, and optionally one of the group's word lists);
+  everyone sees how close each student is.
+
 ## Setup (one time, all free tiers)
 
 ### 1. Supabase project
 
 1. Create a project at [supabase.com](https://supabase.com) (free plan).
-2. Run the migration. Either install the [Supabase CLI](https://supabase.com/docs/guides/cli) and run
-   `supabase link --project-ref <ref>` then `supabase db push`, or paste
-   `supabase/migrations/20261021000000_init.sql` into the dashboard's **SQL Editor** and run it.
+2. Run the migrations, in order. Either install the [Supabase CLI](https://supabase.com/docs/guides/cli) and run
+   `supabase link --project-ref <ref>` then `supabase db push`, or paste each file of `supabase/migrations/`
+   (oldest first) into the dashboard's **SQL Editor** and run it.
 3. **Project Settings → API**: copy the project URL and the publishable (anon) key into `web/config.js`.
 
 ### 2. Google sign-in

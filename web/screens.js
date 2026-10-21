@@ -91,7 +91,7 @@
         "Level " + esc(m.level) + " · streak " + plural(M.streakOf(m.streak_n, m.streak_last), "day", "days")) + "</span></span></li>").join("");
     const students = g.members.filter(m => m.role === "student").length;
     return '<div class="card-box"><h3>' + esc(g.name) + "</h3>" +
-      '<ul class="members">' + members + "</ul>" +
+      (UI.raceSummary(g) || '<ul class="members">' + members + "</ul>") +
       (teacher ? '<div class="sec"><span class="label">Join code for your students</span><span class="code">' + esc(g.join_code) + "</span>" +
         '<p class="note">' + (students ? plural(students, "student has", "students have") + " joined. " : "No students yet. ") +
         "They sign in, tap <b>Join a group</b> and type this code.</p>" +
@@ -134,11 +134,14 @@
     if (pl.due.length) parts.push(pl.due.length + " to review");
     if (pl.fresh.length) parts.push(pl.fresh.length + " new");
     const mins = Math.max(2, Math.round(n * 0.4));
+    // a streak that ends tonight unless you practise
+    const st = M.streak(), atRisk = st > 0 && M.S.streak.last < M.today();
+    const nudge = atRisk ? '<p class="streak-nudge">🔥 Practise today to keep your ' + st + "-day streak.</p>" : "";
     return "<h1>" + (n ? plural(n, "word", "words") + " for today" : (name ? "Ciao, " + esc(name) + "!" : "Ciao!")) + "</h1>" +
       (n ? '<p class="sub">' + parts.join(" · ") + " · about " + mins + " min</p>" +
-           '<button class="btn primary block" data-act="start">Inizia</button>'
+           nudge + '<button class="btn primary block" data-act="start">Inizia</button>'
          : '<p class="sub">All caught up. Words come back just as you’re about to forget them. A domani!</p>' +
-           '<button class="btn block" data-act="extra">Practise a bit more</button>') +
+           nudge + '<button class="btn block" data-act="extra">Practise a bit more</button>') +
       (dp.items.length ? '<button class="btn block" data-act="verbs">Verbs · ' + plural(dp.items.length, "form", "forms") + "</button>" : "");
   }
   function listsHTML() {
@@ -167,7 +170,8 @@
       todayHTML(name) +
       '<div class="tricolore" aria-hidden="true"><i></i><i></i><i></i></div></section>' +
       '<p class="sync-note">Offline: your progress is saved on this device and will sync when you’re back online.</p>' +
-      '<div class="stats"><div class="stat"><b>' + M.streak() + "</b><span>" + (M.streak() === 1 ? "day in a row" : "days in a row") + "</span></div>" +
+      '<div class="stats"><div class="stat"><b>' + M.streak() + (M.streak() ? "🔥" : "") + "</b><span>" + (M.streak() === 1 ? "day in a row" : "days in a row") +
+      (M.S.best.streak > M.streak() ? " · best " + M.S.best.streak : "") + "</span></div>" +
       '<div class="stat"><b>' + known + "</b><span>words you know</span></div>" +
       '<div class="stat"><b>' + esc(level) + "</b><span>CILS level</span></div></div>" +
 
@@ -225,6 +229,7 @@
         start: () => UI.session(pl.words, { kind: "review" }),
         extra: () => UI.session(M.shuffle(M.wordPool().filter(w => M.prog(w).b > 0)).slice(0, 10), { kind: "review" }),
         verbs: () => UI.drill(dp.items),
+        race: t => UI.go("race", t.dataset.id),
         list: t => UI.go("list", t.dataset.id),
         addlist: () => UI.go("addlist"),
         lang: t => { M.setSetting("lang", t.dataset.v); UI.go("home"); },
@@ -232,6 +237,7 @@
         signout: t => { t.disabled = true; CLOUD.signOut(); }
       }
     );
+    groups.forEach(g => UI.refreshRace(g.id));
   };
 
   // ---------- join or create a group ----------

@@ -25,7 +25,7 @@
       (mine(l) ? '<button class="danger" data-act="del">Delete this list</button>' : ""),
       {
         home: () => UI.go("home"),
-        edit: () => UI.go("editlist", { id: l.id, title: l.title, group_id: l.group_id, words: l.words.map(w => ({ ...w })) }),
+        edit: () => UI.go("editlist", { id: l.id, title: l.title, topic: l.topic, group_id: l.group_id, words: l.words.map(w => ({ ...w })) }),
         // weakest first, at most 8 new ones and 15 in all
         practice: () => {
           let fresh = 0;
@@ -39,22 +39,63 @@
       });
   };
 
-  // ---------- add words: paste or type ----------
+  // ---------- add words: from a topic, or pasted ----------
+  const AI_ERR = {
+    not_configured: "Claude isn’t switched on for this site yet. Pick one of the lists above, or paste your words.",
+    no_group: "Join a group first to get lists from Claude.",
+    signed_out: "Please sign in again.",
+    network: "Couldn’t reach the server. Check your connection and try again.",
+    failed: "That didn’t work. Try again, or describe the topic a little differently.",
+    no_words: "That didn’t work. Try again, or describe the topic a little differently."
+  };
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   UI.screens.addlist = function (arg) {
     const text = (arg && arg.text) || "";
+    let found = [];
+    function suggestions() {
+      const topic = app.querySelector("#topic").value.trim();
+      found = M.findTopics(topic);
+      app.querySelector("#sugg").innerHTML =
+        (found.length ? '<ul class="unit-list">' + found.map((t, i) =>
+          '<li><button class="unit-row" data-act="pack" data-i="' + i + '"><span class="t"><span class="name">' + esc(t.name) + "</span>" +
+          (t.level ? ' <span class="tag">CILS ' + esc(t.level) + "</span>" : "") + '<br><span class="meta">' +
+          UI.plural(t.words.length, "word", "words") + " · " + esc(t.words.slice(0, 4).map(w => w.it).join(", ")) + "…</span></span>" + I.chev + "</button></li>").join("") + "</ul>" : "") +
+        (topic.length > 2 ? '<button class="btn block" data-act="claude">✨ ' + (found.length ? "Or ask Claude" : "Ask Claude") + " for words about “" + esc(topic) + "”</button>" +
+          '<p class="note" id="ai-msg" role="status"></p>' : "");
+    }
     UI.render(
       UI.backBar() +
-      '<div class="unit-head"><h1>Add words</h1><p class="note">A topic you need, like a flat renovation or your job. You can check everything before saving.</p></div>' +
-      '<div class="form"><label class="field"><span class="label">One word per line</span><textarea id="w" lang="it" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="' +
+      '<div class="unit-head"><h1>Add words</h1><p class="note">Type a topic you need, like a flat renovation or your job, and pick the words to learn. Or paste your own below.</p></div>' +
+      '<label class="field"><span class="label">Topic</span><input id="topic" autocomplete="off" placeholder="Flat renovation, la cucina, el médico…" maxlength="80"></label>' +
+      '<div id="sugg"></div>' +
+      '<div class="form"><label class="field"><span class="label">Or paste your own words, one per line</span><textarea id="w" lang="it" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="' +
       esc("il muro = wall = la pared\nla piastrella = tile\nverniciare = to paint = pintar") + '">' + esc(text) + "</textarea></label>" +
       '<p class="note">Italian first, then the English and/or Spanish after an <b>=</b>. Put the article on nouns (il, la, l’…) so the gender is learnt too.</p>' +
       '<button class="btn primary block" data-act="next" disabled>Check the words</button></div>',
       {
         home: () => UI.go("home"),
-        input: () => { app.querySelector('[data-act="next"]').disabled = !app.querySelector("#w").value.trim(); },
+        input: t => {
+          if (t.id === "topic") return suggestions();
+          app.querySelector('[data-act="next"]').disabled = !app.querySelector("#w").value.trim();
+        },
+        enter: t => { if (t.id === "topic" && found.length) UI.acts.pack({ dataset: { i: 0 } }); },
+        pack: t => {
+          const p = found[+t.dataset.i];
+          UI.go("editlist", { title: p.name, topic: p.name, words: p.words.map(w => ({ ...w })), from: "pack" });
+        },
+        claude: async t => {
+          const topic = app.querySelector("#topic").value.trim();
+          t.disabled = true; t.textContent = "Writing your list… about 20 seconds";
+          const r = await CLOUD.topicWords(topic, M.S.level, []);
+          if (UI.current !== "addlist") return;
+          if (r.words) return UI.go("editlist", { title: cap(topic), topic, words: r.words, from: "claude" });
+          t.disabled = false; t.textContent = "✨ Try again";
+          app.querySelector("#ai-msg").textContent = AI_ERR[r.error] || AI_ERR.failed;
+        },
         next: () => UI.go("editlist", { title: "", words: M.parseList(app.querySelector("#w").value) })
       });
-    if (text) UI.acts.input();
+    if (text) UI.acts.input(app.querySelector("#w"));
+    else app.querySelector("#topic").focus();
   };
 
   // ---------- review and edit a list ----------
@@ -62,6 +103,7 @@
     const id = arg.id || null;
     const words = (arg.words || []).map(w => ({ it: w.it || "", g: w.g || "", en: w.en || "", es: w.es || "" }));
     let title = arg.title || "", groupId = arg.group_id || "";
+    const topic = arg.topic || "";
     const teaching = M.teaching();
     const valid = w => w.it.trim() && (w.en.trim() || w.es.trim());
 
@@ -85,12 +127,15 @@
 
     UI.render(
       UI.backBar() +
-      '<div class="unit-head"><h1>' + (id ? "Edit list" : "Check your words") + '</h1><p class="note">Tap <b class="a-m">il</b> or <b class="a-f">la</b> to fix a noun’s gender.</p></div>' +
+      '<div class="unit-head"><h1>' + (id ? "Edit list" : "Check your words") + '</h1><p class="note">' +
+      (arg.from ? "Remove the words you don’t need with ×, or add your own. " : "") +
+      'Tap <b class="a-m">il</b> or <b class="a-f">la</b> to fix a noun’s gender.</p></div>' +
       '<label class="field"><span class="label">List name</span><input id="e-title" value="' + esc(title) + '" placeholder="Ristrutturare casa" autocomplete="off"></label>' +
       (teaching.length ? '<label class="field"><span class="label">Who gets it</span><select id="e-group"><option value="">Only me</option>' +
         teaching.map(g => '<option value="' + esc(g.id) + '"' + (g.id === groupId ? " selected" : "") + ">Everyone in " + esc(g.name) + "</option>").join("") + "</select></label>" : "") +
       '<ul class="wed-list" id="e-list"></ul>' +
-      '<button class="btn" data-act="addrow">+ Add a word</button>' +
+      '<div class="btn-row"><button class="btn" data-act="addrow">+ Add a word</button>' +
+      (CLOUD.configured ? '<button class="btn" data-act="more">✨ More words</button>' : "") + "</div>" +
       '<p class="note" id="e-miss" role="status"></p>' +
       '<button class="btn primary block" data-act="save">Save</button>',
       {
@@ -119,7 +164,23 @@
           list();
           app.querySelector("#e-list li:last-child .wed-it").focus();
         },
-        save: () => UI.go("list", M.saveList(id, title.trim() || "My words", words, { group_id: groupId || null }))
+        // Claude suggests more words on the list's topic, leaving out the ones already there
+        more: async t => {
+          const about = (topic || title).trim(), msg = app.querySelector("#e-miss");
+          if (!about) { msg.textContent = "Give the list a name first, so Claude knows the topic."; app.querySelector("#e-title").focus(); return; }
+          t.disabled = true; t.textContent = "Thinking… about 20 seconds";
+          const r = await CLOUD.topicWords(about, M.S.level, words.map(w => w.it).filter(Boolean));
+          if (UI.current !== "editlist") return;
+          t.disabled = false; t.textContent = "✨ More words";
+          if (!r.words) { msg.textContent = AI_ERR[r.error] || AI_ERR.failed; return; }
+          const n = words.length;
+          words.push(...r.words.map(w => ({ it: w.it, g: w.g || "", en: w.en || "", es: w.es || "" })));
+          list();
+          msg.textContent = "Added " + UI.plural(words.length - n, "word", "words") + " at the end. Remove the ones you don’t need with ×.";
+          const first = app.querySelectorAll("#e-list li")[n];
+          if (first) first.scrollIntoView({ block: "center" });
+        },
+        save: () => UI.go("list", M.saveList(id, title.trim() || "My words", words, { group_id: groupId || null, topic: topic || null }))
       });
     list();
   };

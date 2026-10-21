@@ -31,6 +31,29 @@
     });
   };
 
+  // ready-made topic packs (topics.js): "## Name | keyword, keyword" then words as above, without ids
+  const packs = [];
+  window.IIG_TOPICS = function (text) {
+    let pack = null;
+    text.split("\n").forEach(line => {
+      line = line.trim();
+      if (!line) return;
+      if (line.startsWith("## ")) {
+        const [name, keys] = line.slice(3).split("|").map(s => s.trim());
+        pack = { name, keys: (keys || "").split(",").map(s => s.trim()).filter(Boolean), words: [] };
+        packs.push(pack);
+        return;
+      }
+      const [raw, en, es] = line.split("|").map(s => s.trim());
+      const m = raw.match(/^(.*?)\s*\((m|f|m\/f)\)$/);
+      const it = m ? m[1] : raw;
+      const w = { it, en, es };
+      const g = gender(it, m && m[2] !== "m/f" && m[2]);
+      if (g && !(m && m[2] === "m/f")) w.g = g;
+      pack.words.push(w);
+    });
+  };
+
   // verbs: the meaning of each verb is a word of its level; each verb × tense is a drill
   function verbItems() {
     const V = window.IIG_VERBS;
@@ -59,7 +82,7 @@
   let ready = false;
   function content() {
     if (!ready) { verbItems(); ready = true; }
-    return { LEVELS, levels, tenses: (window.IIG_VERBS || {}).tenses || [] };
+    return { LEVELS, levels, packs, tenses: (window.IIG_VERBS || {}).tenses || [] };
   }
   window.IIG_CONTENT = content;
 })();

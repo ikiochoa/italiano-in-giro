@@ -14,6 +14,8 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
   - `lists.js` – your own word lists; teachers can give a list to their group
   - `content.js` + `levels/A1.js` … `levels/C2.js` – the built-in CILS word lists
   - `verbs.js` – 149 common verbs with conjugations (generated, see below)
+  - `topics.js` – ready-made topic packs (flat renovation, doctor, bank…) suggested when you add words
+- `netlify/functions/topic-words.mjs` – asks Claude for words on any other topic (optional, see setup)
 - `tools/build_verbs.py` – builds `web/verbs.js`
 - `supabase/migrations/` – database tables and row-level-security rules
 
@@ -46,6 +48,9 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
   then multiple choice, listening, reverse choice and finally typing, with an Italian voice.
 - **Verbs:** a separate drill, 10 forms at a time. A new tense shows its table first, then you pick the right form,
   later you type it. Essere verbs accept the feminine/plural ending (sono andata).
+- **Your own lists:** type a topic and the app suggests the closest of about 40 ready-made packs (and matching CILS topics).
+  For anything else, Claude writes a list for that topic at your level. You check the words, remove the ones you
+  don't want, and save. **✨ More words** on a list asks Claude for more on the same topic. Or paste your own words.
 - **Points:** 10 per answer right first time plus 20 for finishing, saved with each session for the weekly race.
 
 ## Setup (one time, all free tiers)
@@ -76,7 +81,17 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
    - Site URL: your Netlify address, e.g. `https://italiano-in-giro.netlify.app`
    - Redirect URLs: add the same address, plus `http://localhost:8000` if you want to try it locally.
 
-### 4. Try it
+### 4. Claude for any topic (optional)
+
+Without this, "Add words" still suggests the ready-made packs; only the ✨ buttons say Claude isn't switched on.
+
+1. Create an API key at [platform.claude.com](https://platform.claude.com) (Settings → API keys) and add some credit.
+   A list costs a few cents. Setting a monthly spend limit there is a good idea.
+2. In Netlify: **Site configuration → Environment variables → Add a variable**: key `ANTHROPIC_API_KEY`, value the key,
+   scope *Functions*. Mark it as a secret.
+3. Redeploy (**Deploys → Trigger deploy**). Only signed-in people who are in a group can use it.
+
+### 5. Try it
 
 Open the site, sign in with Google, then the teacher taps **Create a group** and sends the code to the students.
 

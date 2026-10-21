@@ -1,0 +1,10 @@
+{
+  "name": "italiano-in-giro",
+  "private": true,
+  "type": "module",
+  "description": "The website is plain files in web/; these packages are only for the Netlify function in netlify/functions/.",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.137.0",
+    "zod": "^4.6.7"
+  }
+}

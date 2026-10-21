@@ -1,6 +1,11 @@
 [build]
   publish = "web"
 
+# netlify/functions/topic-words.mjs (Claude writes word lists); packages come from package.json
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 # Always check for a new version, so updates reach phones right away.
 [[headers]]
   for = "/*"

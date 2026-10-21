@@ -67,6 +67,7 @@
     S.p[w.id] = p;
     save();
     emit("progress", { word_id: w.id, box: p.b, due: p.due, ok: p.ok, ko: p.ko });
+    checkLevelUp();
   }
   function logAnswer(w, correct, kind) { emit("answer", { word_id: w.id, correct: !!correct, kind }); }
   function logSession(row) { emit("session", row); }
@@ -85,6 +86,39 @@
 
   function setSetting(k, v) { S.set[k] = v; save(); emit("profile", { settings: S.set }); }
   function setLevel(l) { if (!LEVELS.includes(l)) return; S.level = l; save(); emit("profile", { level: l }); }
+
+  // ---------- levels: earned, not chosen ----------
+  // A level counts as done at 80%: 70% of the score is its words (verbs' meanings included),
+  // 30% its conjugation drills, so the long verb tables of B2 and up don't swamp the words.
+  const LEVEL_UP = 0.8;
+  const known = it => prog(it).b >= 3;
+  function levelProgress(level) {
+    const L = window.IIG_CONTENT().levels[level];
+    const w = L.words.length ? L.words.filter(known).length / L.words.length : 1;
+    const d = L.drills.length ? L.drills.filter(known).length / L.drills.length : 1;
+    return { words: L.words.filter(known).length, totalWords: L.words.length, drills: L.drills.filter(known).length,
+      totalDrills: L.drills.length, share: 0.7 * w + 0.3 * d };
+  }
+  let onLevelUp = null;
+  function checkLevelUp() {
+    let i = LEVELS.indexOf(S.level), moved = false;
+    while (i < LEVELS.length - 1 && levelProgress(LEVELS[i]).share >= LEVEL_UP - 1e-9) { i++; moved = true; }
+    if (!moved) return;
+    setLevel(LEVELS[i]);
+    if (onLevelUp) onLevelUp(LEVELS[i]);
+  }
+  function whenLevelUp(fn) { onLevelUp = fn; }
+  // placement quiz: only ever moves up; words answered right are marked as known so they aren't drilled
+  function place(level, rightWords) {
+    rightWords.forEach(w => {
+      if (prog(w).b >= 3) return;
+      S.p[w.id] = Object.assign({ ok: 0, ko: 0 }, S.p[w.id], { b: 3, due: today() + INTERVAL[3] });
+      emit("progress", { word_id: w.id, box: 3, due: S.p[w.id].due, ok: S.p[w.id].ok, ko: S.p[w.id].ko });
+    });
+    save();
+    if (LEVELS.indexOf(level) > LEVELS.indexOf(S.level)) setLevel(level);
+  }
+  function tr(w, lang) { lang = lang || S.set.lang; return w[lang] || w.en || w.es || ""; }
   function setName(n) { emit("profile", { display_name: n }); }
   function setBest(key, v) { S.best[key] = v; save(); emit("profile", { best: S.best }); }
 
@@ -108,6 +142,7 @@
 
   window.IIG = {
     S, LEVELS, save, on, useUser, applyServer, today, prog, state, isDue, grade, logAnswer, logSession,
-    plan, markStreak, streak, streakOf, setSetting, setLevel, setName, setBest, setGroups, teaching, shuffle, esc
+    plan, markStreak, streak, streakOf, setSetting, setLevel, setName, setBest, setGroups, teaching, shuffle, esc,
+    LEVEL_UP, levelProgress, checkLevelUp, whenLevelUp, place, tr
   };
 })();

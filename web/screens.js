@@ -6,6 +6,8 @@
   const ICON = {
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>',
     google: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.6c2.1-1.9 3.3-4.8 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.8 14.2a6.6 6.6 0 0 1 0-4.3V7H2.1a11 11 0 0 0 0 9.9l3.7-2.7z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2.1 7l3.7 2.9C6.7 7.3 9.1 5.4 12 5.4z"/></svg>',
+    chev: '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
     share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v7h14v-7"/></svg>'
   };
 
@@ -91,6 +93,33 @@
       '<button class="danger" data-act="' + (teacher ? "delgroup" : "leave") + '" data-id="' + esc(g.id) + '">' + (teacher ? "Delete this group" : "Leave this group") + "</button></div>";
   }
 
+  // progress towards the next level
+  function levelHTML(level) {
+    const P = M.levelProgress(level), last = level === M.LEVELS[M.LEVELS.length - 1];
+    const pct = Math.min(100, Math.round(P.share / M.LEVEL_UP * 100));
+    const next = M.LEVELS[M.LEVELS.indexOf(level) + 1];
+    return '<p class="sub">You’re at level <b>' + esc(level) + "</b>. " + (last ? "That’s the top: keep your words fresh." :
+      "Learn the words and verbs of " + esc(level) + " to move up to " + esc(next) + ".") + "</p>" +
+      '<div class="lvl"><span class="lvl-tag">' + esc(level) + '</span><span class="lvl-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" aria-label="Progress to the next level"><i style="width:' + pct + '%"></i></span>' +
+      '<span class="lvl-tag next">' + esc(last ? "★" : next) + "</span></div>" +
+      '<p class="note">' + P.words + " of " + P.totalWords + " words · " + P.drills + " of " + P.totalDrills + " verb forms</p>" +
+      (P.words === 0 && M.LEVELS.indexOf(level) === 0 ? '<button class="link" data-act="placement">Already know some Italian? Take the 5-minute placement quiz →</button>' : "");
+  }
+  function mastery(items) {
+    const n = items.length || 1;
+    const learn = items.filter(w => M.state(w) === "learn").length, know = items.filter(w => M.state(w) === "know").length;
+    return '<span class="mastery" role="img" aria-label="' + know + " of " + items.length + ' known"><i class="m-know" style="width:' + (know / n * 100) + '%"></i><i class="m-learn" style="width:' + (learn / n * 100) + '%"></i></span>';
+  }
+  function topicsHTML(shown, mine) {
+    const L = window.IIG_CONTENT().levels[shown];
+    return '<section class="sec" id="topics"><div class="sec-head"><h2>Words for ' + esc(shown) + "</h2></div>" +
+      '<span class="seg levels" role="group" aria-label="Level">' + M.LEVELS.map(l =>
+        '<button data-act="browse" data-v="' + l + '" aria-pressed="' + (l === shown) + '">' + l + (l === mine ? " •" : "") + "</button>").join("") + "</span>" +
+      '<ul class="unit-list">' + L.topics.map((t, i) =>
+        '<li><button class="unit-row" data-act="topic" data-level="' + shown + '" data-i="' + i + '"><span class="t"><span class="name">' + esc(t.name) + '</span><br><span class="meta">' +
+        plural(t.words.length, t.name === "Verbs" ? "verb" : "word", t.name === "Verbs" ? "verbs" : "words") + "</span></span>" + mastery(t.words) + ICON.chev + "</button></li>").join("") + "</ul></section>";
+  }
+
   UI.screens.home = function () {
     const p = profile(), name = firstName();
     const lang = M.S.set.lang, level = M.S.level;
@@ -101,7 +130,7 @@
       topBar(avatar(p)) +
       '<section class="today quad"><p class="date">' + esc(italianDate()) + "</p>" +
       "<h1>" + (name ? "Ciao, " + esc(name) + "!" : "Ciao!") + "</h1>" +
-      '<p class="sub">Your level is <b>' + esc(level) + "</b>. Daily practice, CILS word lists and verb drills are on their way.</p>" +
+      levelHTML(level) +
       '<div class="tricolore" aria-hidden="true"><i></i><i></i><i></i></div></section>' +
       '<p class="sync-note">Offline: your progress is saved on this device and will sync when you’re back online.</p>' +
       '<div class="stats"><div class="stat"><b>' + M.streak() + "</b><span>" + (M.streak() === 1 ? "day in a row" : "days in a row") + "</span></div>" +
@@ -115,11 +144,12 @@
         '<div class="btn-row"><button class="btn primary" data-act="join">Join a group</button><button class="btn" data-act="create">Create a group</button></div></div>') +
       "</section>" +
 
+      topicsHTML(UI.browse || level, level) +
+
       '<section class="sec"><div class="sec-head"><h2>Settings</h2></div><div class="settings">' +
       '<label class="field"><span class="label">Your name</span><input id="name" value="' + esc(p.display_name || "") + '" autocomplete="name" maxlength="40"></label>' +
-      '<div class="set-row"><span>My level</span><span class="seg levels">' +
-      M.LEVELS.map(l => '<button data-act="level" data-v="' + l + '" aria-pressed="' + (l === level) + '">' + l + "</button>").join("") + "</span></div>" +
       '<div class="set-row"><span>Translations in</span><span class="seg"><button data-act="lang" data-v="en" aria-pressed="' + (lang === "en") + '">English</button><button data-act="lang" data-v="es" aria-pressed="' + (lang === "es") + '">Español</button></span></div>' +
+      '<div class="set-row"><span>Placement quiz</span><button class="btn" data-act="placement">' + (level === "A1" ? "Take it" : "Take it again") + "</button></div>" +
       '<div class="set-row account"><span class="note">' + esc((CLOUD.user && CLOUD.user.email) || "") + '</span><button class="btn" data-act="signout">Sign out</button></div>' +
       "</div></section>",
       {
@@ -150,7 +180,9 @@
           clearTimeout(UI.nameTimer);
           UI.nameTimer = setTimeout(() => { const v = t.value.trim(); if (v) M.setName(v); }, 600);
         },
-        level: t => { M.setLevel(t.dataset.v); UI.go("home"); },
+        browse: t => { UI.browse = t.dataset.v; UI.go("home"); document.getElementById("topics").scrollIntoView(); },
+        topic: t => UI.go("topic", { level: t.dataset.level, i: +t.dataset.i }),
+        placement: () => UI.go("placement"),
         lang: t => { M.setSetting("lang", t.dataset.v); UI.go("home"); },
         signout: t => { t.disabled = true; CLOUD.signOut(); }
       }

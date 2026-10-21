@@ -8,7 +8,11 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
   - `config.js` – Supabase project URL + publishable key (public by design)
   - `core.js` – state, spaced repetition, streaks
   - `cloud.js` – Google sign-in and sync with Supabase (works offline, syncs later)
-  - `screens.js` – the screens
+  - `screens.js` – home, sign-in, groups and settings
+  - `learn.js` – word lists by topic, verb tables, placement quiz, level-ups
+  - `content.js` + `levels/A1.js` … `levels/C2.js` – the built-in CILS word lists
+  - `verbs.js` – 149 common verbs with conjugations (generated, see below)
+- `tools/build_verbs.py` – builds `web/verbs.js`
 - `supabase/migrations/` – database tables and row-level-security rules
 
 ## How it works
@@ -18,6 +22,20 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
   People in the same group see each other's name, level, streak and progress (for the weekly race).
   The teacher can also share word lists with the group and see every answer their students give.
 - **Row level security:** everything above is enforced in the database, not just in the website.
+
+## Levels and content
+
+- **Levels are earned.** Everyone starts at A1. A level is done at 80%, where 70% of the score is its words
+  (a word counts once you've answered it right on a few separate days) and 30% its verb forms. Then you move up.
+  The optional placement quiz (8 words per level, 6 right to pass) can start you higher, and only ever moves you up.
+- **Word lists.** CILS doesn't publish word lists: its syllabus (Università per Stranieri di Siena) refers to
+  De Mauro's *Vocabolario di base* and lists topics and grammar per level. The lists in `levels/` follow those topics
+  and are written by hand, with English and Spanish translations. To change them, edit the files: one word per line,
+  `italiano | English | español`, `## Topic` to start a topic, `(m)`/`(f)` after words whose article doesn't show the gender.
+- **Verbs and tenses.** Each tense is introduced at the level the CILS syllabus puts it: presente, passato prossimo and
+  imperativo at A1, imperfetto at A2, condizionale at B1, futuro, congiuntivo, passato remoto and the other compound
+  tenses at B2, congiuntivo passato/trapassato at C1. To add a verb, add it in `tools/build_verbs.py` and run
+  `pip install verbecc && python3 tools/build_verbs.py`. Wrong forms from the conjugator go in its `OVERRIDES`.
 
 ## Setup (one time, all free tiers)
 

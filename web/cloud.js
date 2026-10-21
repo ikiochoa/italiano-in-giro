@@ -90,7 +90,7 @@
     const ids = mine.data.map(r => r.group.id);
     if (!ids.length) return [];
     const all = await sb.from("group_members")
-      .select("group_id, role, joined_at, profile:profiles(id, display_name, avatar_url, level, streak_n, streak_last)")
+      .select("group_id, role, joined_at, profile:profiles(id, display_name, avatar_url, level, streak_n, streak_last, stats)")
       .in("group_id", ids).order("joined_at");
     if (all.error) throw all.error;
     return mine.data
@@ -126,6 +126,7 @@
       CLOUD.profile = p.data;
       saveProfile();
       M.applyServer({ profile: p.data, progress, lists, groups });
+      M.publishStats();
       setStatus("ok");
       if (UI.current === "home" || UI.current === "loading") UI.go("home");
     } catch (e) {
@@ -189,6 +190,39 @@
     return {};
   };
   CLOUD.refreshGroups = refreshGroups;
+
+  // ---------- the weekly race ----------
+  // this week's and last week's points for everyone in the group, plus the teacher's challenge
+  CLOUD.board = async function (groupId) {
+    try {
+      await flush();
+      const now = M.weekStart(0), prev = M.weekStart(-1);
+      const ch = await sb.from("challenges").select("title, target, list_id, week").eq("group_id", groupId).eq("week", M.isoDay(now)).maybeSingle();
+      if (ch.error) throw ch.error;
+      const [week, last] = await Promise.all([
+        sb.rpc("group_week", { g: groupId, since: now.toISOString(), list: ch.data ? ch.data.list_id : null }),
+        sb.rpc("group_week", { g: groupId, since: prev.toISOString(), until: now.toISOString() })
+      ]);
+      if (week.error) throw week.error;
+      if (last.error) throw last.error;
+      const board = { week: M.isoDay(now), rows: week.data, last: last.data, challenge: ch.data, at: new Date().toISOString() };
+      M.setBoard(groupId, board);
+      return board;
+    } catch (e) {
+      console.warn("Could not load the race", e);
+      return null;
+    }
+  };
+  CLOUD.setChallenge = async function (groupId, c) {
+    await flush();   // the list it points to must be on the server first
+    const row = { group_id: groupId, week: M.isoDay(M.weekStart(0)), title: c.title, target: c.target, list_id: c.list_id || null };
+    const { error } = await sb.from("challenges").upsert(row, { onConflict: "group_id,week" });
+    return error ? { error: "network" } : {};
+  };
+  CLOUD.clearChallenge = async function (groupId) {
+    const { error } = await sb.from("challenges").delete().eq("group_id", groupId).eq("week", M.isoDay(M.weekStart(0)));
+    return error ? { error: "network" } : {};
+  };
 
   // ---------- words for any topic, written by Claude (netlify/functions/topic-words.mjs) ----------
   // → { words: [{ it, g, en, es }] } or { error: signed_out | no_group | not_configured | failed | no_words | network }

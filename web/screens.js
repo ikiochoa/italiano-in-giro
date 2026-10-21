@@ -4,6 +4,7 @@
   const app = document.getElementById("app");
 
   const ICON = {
+    speak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>',
     google: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.6c2.1-1.9 3.3-4.8 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.8 14.2a6.6 6.6 0 0 1 0-4.3V7H2.1a11 11 0 0 0 0 9.9l3.7-2.7z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2.1 7l3.7 2.9C6.7 7.3 9.1 5.4 12 5.4z"/></svg>',
     chev: '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
@@ -24,22 +25,27 @@
   // ---------- navigation ----------
   const UI = { acts: {}, timer: null, screens: {}, current: null, ICON, plural, avatar };
   UI.render = function (html, acts) {
+    app.classList.remove("has-sheet");
     app.innerHTML = html;
     UI.acts = acts || {};
   };
   UI.go = function (name, arg) {
     if (UI.timer) { clearInterval(UI.timer); UI.timer = null; }
+    if (M.canSpeak) speechSynthesis.cancel();
     UI.current = name;
     UI.screens[name](arg);
     window.scrollTo(0, 0);
   };
   app.addEventListener("click", e => {
+    const sp = e.target.closest("[data-say]");
+    if (sp) M.say(sp.dataset.say, !!sp.dataset.slow);
     const t = e.target.closest("[data-act]");
     if (!t || t.disabled) return;
     const f = UI.acts[t.dataset.act];
     if (f) f(t, e);
   });
   app.addEventListener("input", e => { if (UI.acts.input) UI.acts.input(e.target, e); });
+  app.addEventListener("change", e => { if (UI.acts.change) UI.acts.change(e.target, e); });
   app.addEventListener("keydown", e => { if (e.key === "Enter" && UI.acts.enter && e.target.matches("input")) { e.preventDefault(); UI.acts.enter(e.target); } });
 
   const logo = '<span class="logo">Italiano <b>in</b> <i>giro</i></span>';
@@ -120,6 +126,35 @@
         plural(t.words.length, t.name === "Verbs" ? "verb" : "word", t.name === "Verbs" ? "verbs" : "words") + "</span></span>" + mastery(t.words) + ICON.chev + "</button></li>").join("") + "</ul></section>";
   }
 
+  // today's plan: words, then verb forms
+  let pl = null, dp = null;
+  function todayHTML(name) {
+    pl = M.plan(); dp = M.drillPlan();
+    const n = pl.words.length, parts = [];
+    if (pl.due.length) parts.push(pl.due.length + " to review");
+    if (pl.fresh.length) parts.push(pl.fresh.length + " new");
+    const mins = Math.max(2, Math.round(n * 0.4));
+    return "<h1>" + (n ? plural(n, "word", "words") + " for today" : (name ? "Ciao, " + esc(name) + "!" : "Ciao!")) + "</h1>" +
+      (n ? '<p class="sub">' + parts.join(" · ") + " · about " + mins + " min</p>" +
+           '<button class="btn primary block" data-act="start">Inizia</button>'
+         : '<p class="sub">All caught up. Words come back just as you’re about to forget them. A domani!</p>' +
+           '<button class="btn block" data-act="extra">Practise a bit more</button>') +
+      (dp.items.length ? '<button class="btn block" data-act="verbs">Verbs · ' + plural(dp.items.length, "form", "forms") + "</button>" : "");
+  }
+  function listsHTML() {
+    const me = CLOUD.user && CLOUD.user.id;
+    const lists = M.S.lists.filter(l => l.kind !== "verbs");
+    const row = l => {
+      const words = M.listWords(l), group = l.group_id && M.S.groups.find(g => g.id === l.group_id);
+      const tag = l.owner_id && l.owner_id !== me ? '<span class="tag teacher">From ' + esc(group ? group.name : "your teacher") + "</span>" : group ? '<span class="tag">Shared</span>' : "";
+      return '<li><button class="unit-row" data-act="list" data-id="' + esc(l.id) + '"><span class="t"><span class="name">' + esc(l.title) + '</span><br><span class="meta">' +
+        plural(words.length, "word", "words") + " " + tag + "</span></span>" + mastery(words) + ICON.chev + "</button></li>";
+    };
+    return '<section class="sec"><div class="sec-head"><h2>Your lists</h2><button class="link" data-act="addlist">+ Add words</button></div>' +
+      (lists.length ? '<ul class="unit-list">' + lists.map(row).join("") + "</ul>"
+        : '<div class="card-box"><p>Learning words for something specific, like a flat renovation? Add your own list and it joins your daily plan.</p></div>') + "</section>";
+  }
+
   UI.screens.home = function () {
     const p = profile(), name = firstName();
     const lang = M.S.set.lang, level = M.S.level;
@@ -129,8 +164,7 @@
     UI.render(
       topBar(avatar(p)) +
       '<section class="today quad"><p class="date">' + esc(italianDate()) + "</p>" +
-      "<h1>" + (name ? "Ciao, " + esc(name) + "!" : "Ciao!") + "</h1>" +
-      levelHTML(level) +
+      todayHTML(name) +
       '<div class="tricolore" aria-hidden="true"><i></i><i></i><i></i></div></section>' +
       '<p class="sync-note">Offline: your progress is saved on this device and will sync when you’re back online.</p>' +
       '<div class="stats"><div class="stat"><b>' + M.streak() + "</b><span>" + (M.streak() === 1 ? "day in a row" : "days in a row") + "</span></div>" +
@@ -144,11 +178,16 @@
         '<div class="btn-row"><button class="btn primary" data-act="join">Join a group</button><button class="btn" data-act="create">Create a group</button></div></div>') +
       "</section>" +
 
+      '<section class="sec"><div class="sec-head"><h2>Your level</h2></div><div class="card-box">' + levelHTML(level) + "</div></section>" +
+
+      listsHTML() +
+
       topicsHTML(UI.browse || level, level) +
 
       '<section class="sec"><div class="sec-head"><h2>Settings</h2></div><div class="settings">' +
       '<label class="field"><span class="label">Your name</span><input id="name" value="' + esc(p.display_name || "") + '" autocomplete="name" maxlength="40"></label>' +
       '<div class="set-row"><span>Translations in</span><span class="seg"><button data-act="lang" data-v="en" aria-pressed="' + (lang === "en") + '">English</button><button data-act="lang" data-v="es" aria-pressed="' + (lang === "es") + '">Español</button></span></div>' +
+      '<div class="set-row"><span>Read words aloud</span><span class="seg"><button data-act="auto" data-v="1" aria-pressed="' + (M.S.set.auto !== false) + '">On</button><button data-act="auto" data-v="0" aria-pressed="' + (M.S.set.auto === false) + '">Off</button></span></div>' +
       '<div class="set-row"><span>Placement quiz</span><button class="btn" data-act="placement">' + (level === "A1" ? "Take it" : "Take it again") + "</button></div>" +
       '<div class="set-row account"><span class="note">' + esc((CLOUD.user && CLOUD.user.email) || "") + '</span><button class="btn" data-act="signout">Sign out</button></div>' +
       "</div></section>",
@@ -183,7 +222,13 @@
         browse: t => { UI.browse = t.dataset.v; UI.go("home"); document.getElementById("topics").scrollIntoView(); },
         topic: t => UI.go("topic", { level: t.dataset.level, i: +t.dataset.i }),
         placement: () => UI.go("placement"),
+        start: () => UI.session(pl.words, { kind: "review" }),
+        extra: () => UI.session(M.shuffle(M.wordPool().filter(w => M.prog(w).b > 0)).slice(0, 10), { kind: "review" }),
+        verbs: () => UI.drill(dp.items),
+        list: t => UI.go("list", t.dataset.id),
+        addlist: () => UI.go("addlist"),
         lang: t => { M.setSetting("lang", t.dataset.v); UI.go("home"); },
+        auto: t => { M.setSetting("auto", t.dataset.v === "1"); UI.go("home"); },
         signout: t => { t.disabled = true; CLOUD.signOut(); }
       }
     );

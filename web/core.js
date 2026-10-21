@@ -122,13 +122,138 @@
   function setName(n) { emit("profile", { display_name: n }); }
   function setBest(key, v) { S.best[key] = v; save(); emit("profile", { best: S.best }); }
 
-  // today's plan: due reviews first, then new words
+  // ---------- what to practise ----------
+  const lvIndex = l => LEVELS.indexOf(l);
+  // words of your own lists and lists your teacher shared (id "<list id>:<italian>")
+  function listWords(list) {
+    return list.words.map(w => Object.assign({}, w, { id: list.id + ":" + w.it, list: list.id }));
+  }
+  function myListWords() { return S.lists.filter(l => l.kind !== "verbs").flatMap(listWords); }
+  // every word you could meet: built-in levels up to yours, plus your lists
+  function wordPool() {
+    const C = window.IIG_CONTENT();
+    return LEVELS.filter(l => lvIndex(l) <= lvIndex(S.level)).flatMap(l => C.levels[l].words).concat(myListWords());
+  }
+  function drillPool() {
+    const C = window.IIG_CONTENT();
+    return LEVELS.filter(l => lvIndex(l) <= lvIndex(S.level)).flatMap(l => C.levels[l].drills);
+  }
+  // today's plan: due reviews first, then new words; new ones come half from your lists, half from your level
   function plan(pool) {
+    pool = pool || wordPool();
     const due = pool.filter(isDue).sort((a, b) => prog(a).b - prog(b).b || prog(a).due - prog(b).due);
-    const fresh = pool.filter(w => prog(w).b === 0);
     const d = due.slice(0, SESSION_SIZE);
-    const n = fresh.slice(0, Math.max(0, Math.min(NEW_PER_SESSION, SESSION_SIZE - d.length)));
+    const room = Math.max(0, Math.min(NEW_PER_SESSION, SESSION_SIZE - d.length));
+    const freshMine = pool.filter(w => w.list && prog(w).b === 0);
+    const freshLevel = pool.filter(w => !w.list && prog(w).b === 0 && w.level === S.level);
+    const freshOlder = pool.filter(w => !w.list && prog(w).b === 0 && w.level !== S.level);
+    const n = [];
+    while (n.length < room && (freshMine.length || freshLevel.length || freshOlder.length)) {
+      const src = (n.length % 2 === 0 && freshMine.length) ? freshMine : (freshOlder.length ? freshOlder : freshLevel.length ? freshLevel : freshMine);
+      n.push(src.shift());
+    }
     return { due: d, fresh: n, words: shuffle(d).concat(n) };
+  }
+  // conjugation: due drills first, then new ones in the order a course would teach them
+  // (the present of the common verbs first, then the next tense)
+  function drillPlan(size) {
+    size = size || 10;
+    const pool = drillPool();
+    const due = pool.filter(isDue).sort((a, b) => prog(a).b - prog(b).b || prog(a).due - prog(b).due).slice(0, size);
+    const C = window.IIG_CONTENT(), tIdx = k => C.tenses.findIndex(t => t.key === k), vIdx = v => window.IIG_VERBS.verbs.indexOf(v);
+    const fresh = pool.filter(d => prog(d).b === 0)
+      .sort((a, b) => tIdx(a.tense) - tIdx(b.tense) || vIdx(a.verb) - vIdx(b.verb))
+      .slice(0, Math.max(0, Math.min(4, size - due.length)));
+    return { due, fresh, items: shuffle(due).concat(fresh) };
+  }
+
+  // ---------- checking typed answers ----------
+  function norm(s) {
+    return (s || "").toLowerCase().replace(/[’‘`´]/g, "'").replace(/\s+/g, " ").replace(/\s*'\s*/g, "'").replace(/[.!?]+$/, "").trim();
+  }
+  const strip = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const ART = /^(il |lo |la |i |gli |le |l')/;
+  // "la casa" → ok | accent (casá) | article (casa) | bad
+  function check(input, answer) {
+    const a = norm(input);
+    if (!a) return "bad";
+    const alts = answer.split("/").map(norm);
+    if (alts.includes(a)) return "ok";
+    if (alts.some(b => strip(a) === strip(b))) return "accent";
+    if (alts.some(b => ART.test(b) && (a === b.replace(ART, "") || strip(a) === strip(b.replace(ART, ""))))) return "article";
+    return "bad";
+  }
+  // conjugated forms: also accept the feminine / plural endings of essere verbs (sono andata, siamo andate)
+  function checkForm(input, form, aux) {
+    const r = check(input, form);
+    if (r !== "bad" || aux !== "essere") return r;
+    const swap = f => f.split("/").map(x => x.replace(/o$/, "a").replace(/i$/, "e")).join("/");
+    return check(input, swap(form)) === "ok" ? "ok" : r;
+  }
+
+  // ---------- Italian voice ----------
+  let voice = null;
+  function pickVoice() {
+    if (!("speechSynthesis" in window)) return;
+    const vs = speechSynthesis.getVoices();
+    const it = vs.filter(v => /^it[-_]IT/i.test(v.lang));
+    voice = it.find(v => /premium|enhanced|Alice|Federica|Luca|Google/i.test(v.name)) || it[0] || vs.find(v => /^it/i.test(v.lang)) || null;
+  }
+  const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
+  if (canSpeak) { pickVoice(); speechSynthesis.addEventListener("voiceschanged", pickVoice); }
+  function say(text, slow) {
+    if (!canSpeak || !text) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.split("/")[0]);
+    u.lang = "it-IT";
+    if (voice) u.voice = voice;
+    u.rate = slow ? 0.6 : 0.95;
+    speechSynthesis.speak(u);
+  }
+
+  // ---------- your own lists ----------
+  // pasted text: one word per line, "parola = translation" (or ; or tab); a third column is Spanish
+  function parseList(text) {
+    const out = [];
+    text.split(/\r?\n/).forEach(line => {
+      if (!line.trim()) return;
+      const parts = line.split(/\s*(?:=|;|\t|\|)\s*/).map(x => x.trim());
+      let it = parts[0] || "", g = null;
+      const gm = it.match(/\s*\((m|f)\.?\)\s*$/i);
+      if (gm) { g = gm[1].toLowerCase(); it = it.slice(0, gm.index).trim(); }
+      const art = (it.match(/^(il|lo|la|i|gli|le|un|uno|una) /i) || [])[1];
+      if (!g && art) g = /^(il|lo|i|gli|un|uno)$/i.test(art) ? "m" : "f";
+      if (!it) return;
+      const w = { it, en: parts[1] || "", es: parts[2] || "" };
+      if (g) w.g = g;
+      out.push(w);
+    });
+    return out;
+  }
+  function cleanWord(w) {
+    const o = { it: (w.it || "").trim() };
+    if (w.g === "m" || w.g === "f") o.g = w.g;
+    ["en", "es"].forEach(k => { const v = (w[k] || "").trim(); if (v) o[k] = v; });
+    return o;
+  }
+  function saveList(id, title, words, extra) {
+    words = words.map(cleanWord).filter(w => w.it && (w.en || w.es));
+    const seen = new Set();
+    words = words.filter(w => !seen.has(w.it) && seen.add(w.it));
+    id = id || "l-" + (crypto.randomUUID ? crypto.randomUUID().slice(0, 13) : Date.now().toString(36));
+    const row = Object.assign({ id, title, words, kind: "vocab", group_id: null, topic: null }, extra || {});
+    const l = S.lists.find(x => x.id === id);
+    if (l) Object.assign(l, row); else S.lists.push(row);
+    save();
+    emit("list-upsert", { id, title, words, kind: row.kind, group_id: row.group_id, topic: row.topic });
+    return id;
+  }
+  function deleteList(id) {
+    if (!S.lists.find(x => x.id === id)) return;
+    Object.keys(S.p).forEach(k => { if (k.startsWith(id + ":")) delete S.p[k]; });
+    S.lists = S.lists.filter(x => x.id !== id);
+    save();
+    emit("list-delete", { id });
   }
 
   // ---------- groups ----------
@@ -143,6 +268,8 @@
   window.IIG = {
     S, LEVELS, save, on, useUser, applyServer, today, prog, state, isDue, grade, logAnswer, logSession,
     plan, markStreak, streak, streakOf, setSetting, setLevel, setName, setBest, setGroups, teaching, shuffle, esc,
-    LEVEL_UP, levelProgress, checkLevelUp, whenLevelUp, place, tr
+    LEVEL_UP, levelProgress, checkLevelUp, whenLevelUp, place, tr,
+    listWords, myListWords, wordPool, drillPool, drillPlan, norm, check, checkForm, say, canSpeak,
+    parseList, saveList, deleteList
   };
 })();

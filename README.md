@@ -10,6 +10,8 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
   - `cloud.js` – Google sign-in and sync with Supabase (works offline, syncs later)
   - `screens.js` – home, sign-in, groups and settings
   - `learn.js` – word lists by topic, verb tables, placement quiz, level-ups
+  - `play.js` – practice sessions (words) and the conjugation drill
+  - `lists.js` – your own word lists; teachers can give a list to their group
   - `content.js` + `levels/A1.js` … `levels/C2.js` – the built-in CILS word lists
   - `verbs.js` – 149 common verbs with conjugations (generated, see below)
 - `tools/build_verbs.py` – builds `web/verbs.js`
@@ -36,6 +38,15 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
   imperativo at A1, imperfetto at A2, condizionale at B1, futuro, congiuntivo, passato remoto and the other compound
   tenses at B2, congiuntivo passato/trapassato at C1. To add a verb, add it in `tools/build_verbs.py` and run
   `pip install verbecc && python3 tools/build_verbs.py`. Wrong forms from the conjugator go in its `OVERRIDES`.
+
+## Practice
+
+- **Today's plan:** words due for review first, then up to 6 new ones, alternating between your own lists and your
+  level's list. Each word goes through boxes 0–5 (new → 1, 2, 4, 8, 16 days); new words get an intro card,
+  then multiple choice, listening, reverse choice and finally typing, with an Italian voice.
+- **Verbs:** a separate drill, 10 forms at a time. A new tense shows its table first, then you pick the right form,
+  later you type it. Essere verbs accept the feminine/plural ending (sono andata).
+- **Points:** 10 per answer right first time plus 20 for finishing, saved with each session for the weekly race.
 
 ## Setup (one time, all free tiers)
 

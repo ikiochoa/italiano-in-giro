@@ -142,9 +142,10 @@
   }
 
   // ---------- level up ----------
+  // during practice the level-up waits until the session's result screen has been seen
   M.whenLevelUp(level => {
-    const prev = UI.current;
-    UI.go("levelup", { level, prev });
+    if (UI.current === "session" || UI.current === "drill") UI.pendingLevel = level;
+    else UI.go("levelup", { level });
   });
   UI.screens.levelup = function (arg) {
     UI.render(

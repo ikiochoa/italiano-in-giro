@@ -234,7 +234,7 @@
       .slice(0, Math.max(0, Math.min(4, size - due.length)));
     return { due, fresh, items: shuffle(due).concat(fresh) };
   }
-  // practising one level or topic of your choice: what's due and some new ones, as usual;
+  // practising one topic of your choice: what's due and some new ones, as usual;
   // if all of it is known and nothing is due yet, a random handful to go over again
   function practiceWords(words) {
     const p = plan(words);

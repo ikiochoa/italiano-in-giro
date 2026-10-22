@@ -127,8 +127,6 @@
     return '<section class="sec" id="topics"><div class="sec-head"><h2>Words for ' + esc(shown) + "</h2></div>" +
       '<span class="seg levels" role="group" aria-label="Level">' + M.LEVELS.map(l =>
         '<button data-act="browse" data-v="' + l + '" aria-pressed="' + (l === shown) + '">' + l + (l === mine ? " •" : "") + "</button>").join("") + "</span>" +
-      '<div class="btn-row"><button class="btn primary" data-act="lvwords" data-v="' + shown + '">Practise ' + esc(shown) + " words</button>" +
-      (L.drills.length ? '<button class="btn" data-act="lvverbs" data-v="' + shown + '">Practise ' + esc(shown) + " verbs</button>" : "") + "</div>" +
       '<ul class="unit-list">' + L.topics.map((t, i) =>
         '<li><button class="unit-row" data-act="topic" data-level="' + shown + '" data-i="' + i + '"><span class="t"><span class="name">' + esc(t.name) + '</span><br><span class="meta">' +
         plural(t.words.length, t.name === "Verbs" ? "verb" : "word", t.name === "Verbs" ? "verbs" : "words") + "</span></span>" + mastery(t.words) + ICON.chev + "</button></li>").join("") + "</ul></section>";
@@ -258,8 +256,6 @@
         start: () => UI.session(pl.words, { kind: "review" }),
         extra: () => UI.session(M.shuffle(M.wordPool().filter(w => M.prog(w).b > 0)).slice(0, 10), { kind: "review" }),
         verbs: () => UI.drill(dx),
-        lvwords: t => { const L = window.IIG_CONTENT().levels[t.dataset.v]; UI.session(M.practiceWords(L.words), { kind: "review", pool: L.words }); },
-        lvverbs: t => UI.drill(M.practiceDrills(window.IIG_CONTENT().levels[t.dataset.v].drills)),
         race: t => UI.go("race", t.dataset.id),
         list: t => UI.go("list", t.dataset.id),
         addlist: () => UI.go("addlist"),

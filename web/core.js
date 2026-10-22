@@ -57,7 +57,18 @@
 
   // ---------- progress ----------
   function prog(w) { return S.p[w.id] || { b: 0, due: 0 }; }
-  function state(w) { const b = prog(w).b; return b === 0 ? "new" : b <= 2 ? "learn" : "know"; }
+  // a word turns green ("know") at box 3: right first time on three different days (1, then 2 days apart);
+  // a mistake sends it back to box 1
+  const KNOWN_BOX = 3;
+  function state(w) { const b = prog(w).b; return b === 0 ? "new" : b < KNOWN_BOX ? "learn" : "know"; }
+  // "Learning: 1 of 3 · next review tomorrow"
+  function stepNote(w) {
+    const p = prog(w);
+    if (!p.b) return "New";
+    const days = p.due - today();
+    const when = days <= 0 ? "review today" : days === 1 ? "next review tomorrow" : "next review in " + days + " days";
+    return (p.b >= KNOWN_BOX ? "You know it" : "Learning: " + p.b + " of " + KNOWN_BOX) + " · " + when;
+  }
   function isDue(w) { const p = prog(w); return p.b > 0 && p.due <= today(); }
 
   function grade(w, correct, firstTry) {
@@ -82,7 +93,7 @@
   function stats() {
     const lv = {};
     LEVELS.forEach(l => { lv[l] = Math.round(levelProgress(l).share * 1000) / 1000; });
-    const o = { lv, known: Object.values(S.p).filter(x => x.b >= 3).length };
+    const o = { lv, known: Object.values(S.p).filter(x => x.b >= KNOWN_BOX).length };
     if (S.up) o.up = S.up;
     return o;
   }
@@ -118,18 +129,30 @@
 
   function setSetting(k, v) { S.set[k] = v; save(); emit("profile", { settings: S.set }); }
   function setLevel(l) { if (!LEVELS.includes(l)) return; S.level = l; save(); emit("profile", { level: l }); }
+  // going back down (from settings): your words keep their progress, only what you practise changes
+  function lowerLevel(l) {
+    if (lvIndex(l) < 0 || lvIndex(l) >= lvIndex(S.level)) return;
+    if (S.up && lvIndex(S.up.level) > lvIndex(l)) S.up = null;
+    setLevel(l);
+    publishStats();
+  }
 
   // ---------- levels: earned, not chosen ----------
   // A level counts as done at 80%: 70% of the score is its words (verbs' meanings included),
   // 30% its conjugation drills, so the long verb tables of B2 and up don't swamp the words.
   const LEVEL_UP = 0.8;
-  const known = it => prog(it).b >= 3;
+  const known = it => prog(it).b >= KNOWN_BOX;
   function levelProgress(level) {
     const L = window.IIG_CONTENT().levels[level];
     const w = L.words.length ? L.words.filter(known).length / L.words.length : 1;
     const d = L.drills.length ? L.drills.filter(known).length / L.drills.length : 1;
+    const learning = it => { const b = prog(it).b; return b > 0 && b < KNOWN_BOX; };
+    const lw = L.words.length ? L.words.filter(learning).length / L.words.length : 0;
+    const ld = L.drills.length ? L.drills.filter(learning).length / L.drills.length : 0;
     return { words: L.words.filter(known).length, totalWords: L.words.length, drills: L.drills.filter(known).length,
-      totalDrills: L.drills.length, share: 0.7 * w + 0.3 * d };
+      totalDrills: L.drills.length, share: 0.7 * w + 0.3 * d,
+      learningWords: L.words.filter(learning).length, learningDrills: L.drills.filter(learning).length,
+      learningShare: 0.7 * lw + 0.3 * ld };
   }
   let onLevelUp = null;
   function checkLevelUp() {
@@ -142,15 +165,25 @@
     if (onLevelUp) onLevelUp(LEVELS[i]);
   }
   function whenLevelUp(fn) { onLevelUp = fn; }
-  // placement quiz: only ever moves up; words answered right are marked as known so they aren't drilled
-  function place(level, rightWords) {
-    rightWords.forEach(w => {
-      if (prog(w).b >= 3) return;
-      S.p[w.id] = Object.assign({ ok: 0, ko: 0 }, S.p[w.id], { b: 3, due: today() + INTERVAL[3] });
-      emit("progress", { word_id: w.id, box: 3, due: S.p[w.id].due, ok: S.p[w.id].ok, ko: S.p[w.id].ko });
+  // placement quiz: the result becomes your level, up or down. Words and verb forms typed right are marked
+  // as known; marks left by an earlier quiz (known, but never practised) are cleared first.
+  function place(level, rightItems) {
+    const right = new Set(rightItems.map(x => x.id));
+    Object.keys(S.p).forEach(id => {
+      const p = S.p[id];
+      if (p.b >= KNOWN_BOX && !p.ok && !p.ko && !right.has(id)) {
+        S.p[id] = Object.assign({}, p, { b: 0, due: 0 });
+        emit("progress", { word_id: id, box: 0, due: 0, ok: 0, ko: 0 });
+      }
+    });
+    rightItems.forEach(w => {
+      if (prog(w).b >= KNOWN_BOX) return;
+      S.p[w.id] = Object.assign({ ok: 0, ko: 0 }, S.p[w.id], { b: KNOWN_BOX, due: today() + INTERVAL[KNOWN_BOX] });
+      emit("progress", { word_id: w.id, box: KNOWN_BOX, due: S.p[w.id].due, ok: S.p[w.id].ok, ko: S.p[w.id].ko });
     });
     save();
-    if (LEVELS.indexOf(level) > LEVELS.indexOf(S.level)) setLevel(level);
+    if (S.up && lvIndex(S.up.level) > lvIndex(level)) S.up = null;
+    if (level !== S.level) setLevel(level);
     publishStats();
   }
   function tr(w, lang) { lang = lang || S.set.lang; return w[lang] || w.en || w.es || ""; }
@@ -207,6 +240,18 @@
     return (s || "").toLowerCase().replace(/[’‘`´]/g, "'").replace(/\s+/g, " ").replace(/\s*'\s*/g, "'").replace(/[.!?]+$/, "").trim();
   }
   const strip = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // how alike two words look, 0..1 (edit distance, ignoring accents and case)
+  function alike(a, b) {
+    a = strip((a || "").toLowerCase()); b = strip((b || "").toLowerCase());
+    if (!a || !b) return 0;
+    let row = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const next = [i];
+      for (let j = 1; j <= b.length; j++) next[j] = Math.min(row[j] + 1, next[j - 1] + 1, row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      row = next;
+    }
+    return 1 - row[b.length] / Math.max(a.length, b.length);
+  }
   const ART = /^(il |lo |la |i |gli |le |l')/;
   // "la casa" → ok | accent (casá) | article (casa) | bad
   function check(input, answer) {
@@ -324,8 +369,9 @@
 
   window.IIG = {
     S, LEVELS, save, on, useUser, applyServer, today, prog, state, isDue, grade, logAnswer, logSession,
-    plan, markStreak, streak, streakOf, setSetting, setLevel, setName, setBest, setGroups, teaching, shuffle, esc,
+    plan, markStreak, streak, streakOf, setSetting, setLevel, lowerLevel, setName, setBest, setGroups, teaching, shuffle, esc,
     LEVEL_UP, levelProgress, checkLevelUp, whenLevelUp, place, tr,
+    KNOWN_BOX, stepNote, alike, strip,
     listWords, myListWords, wordPool, drillPool, drillPlan, norm, check, checkForm, say, canSpeak,
     parseList, saveList, deleteList, findTopics, stats, publishStats, weekStart, isoDay, setBoard
   };

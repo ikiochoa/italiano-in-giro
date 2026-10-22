@@ -12,8 +12,7 @@
     const words = M.listWords(l);
     const group = l.group_id && M.S.groups.find(g => g.id === l.group_id);
     const rows = words.map(w => {
-      const st = M.state(w);
-      return '<li><span class="dot ' + st + '"></span><span class="w">' + UI.itHTML(w) + '<br><span class="trs">' + esc([w.en, w.es].filter(Boolean).join(" · ")) + "</span></span>" +
+      return '<li>' + UI.dotHTML(w) + '<span class="w">' + UI.itHTML(w) + '<br><span class="trs">' + esc([w.en, w.es].filter(Boolean).join(" · ")) + "</span></span>" +
         (M.canSpeak ? '<button class="speak-sm" data-say="' + esc(w.it) + '" aria-label="Listen to ' + esc(w.it) + '">' + I.speak + "</button>" : "") + "</li>";
     }).join("");
     UI.render(

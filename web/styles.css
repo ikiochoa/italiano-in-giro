@@ -165,7 +165,9 @@ html[data-sync="offline"] .sync-note { display: block; }
 .lvl-tag { font-weight: 700; font-size: .85rem; padding: 2px 9px; border-radius: 99px; background: var(--verde); color: var(--paper); }
 .lvl-tag.next { background: var(--line); color: var(--ink-2); }
 .lvl-bar { flex: 1; height: 10px; border-radius: 99px; background: var(--rule); overflow: hidden; border: 1px solid var(--line); }
-.lvl-bar i { display: block; height: 100%; background: var(--verde); border-radius: 99px; }
+.lvl-bar { display: flex; }
+.lvl-bar i { display: block; height: 100%; background: var(--verde); }
+.lvl-bar i.learning { background: var(--ink-3); opacity: .45; }
 .today .link { justify-self: start; text-align: left; }
 
 /* ---------- topics and words ---------- */
@@ -195,6 +197,12 @@ html[data-sync="offline"] .sync-note { display: block; }
 .gtag { font-family: var(--f-ui); font-size: .62em; font-weight: 700; vertical-align: .25em; margin-left: .25em; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; }
 .dot.learn { background: var(--ink-3); } .dot.know { background: var(--ok); }
+.dot.s1 { background: conic-gradient(var(--ok) 0 33%, var(--line) 0); box-shadow: inset 0 0 0 1.5px var(--ok); }
+.dot.s2 { background: conic-gradient(var(--ok) 0 67%, var(--line) 0); box-shadow: inset 0 0 0 1.5px var(--ok); }
+.dot.learn.s1, .dot.learn.s2 { width: 11px; height: 11px; }
+.legend .dot + .dot { margin-left: -3px; }
+.how summary { cursor: pointer; font-size: .85rem; color: var(--ink-2); }
+.how p { margin-top: 6px; }
 .legend { display: flex; gap: 14px; font-size: .8rem; color: var(--ink-2); flex-wrap: wrap; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 
@@ -334,3 +342,7 @@ details.later .conj { opacity: .7; }
 .cell[style*="--v:1.00"], .cell[style*="--v:0.9"], .cell[style*="--v:0.8"], .cell[style*="--v:0.7"], .cell[style*="--v:0.6"] { color: #fff; }
 .cell.now { outline: 2px solid var(--ink); outline-offset: -1px; }
 .form-err:empty { display: none; }
+
+/* ---------- placement quiz ---------- */
+.pl-fb { min-height: 1.6em; text-align: center; font-size: 1.05rem; }
+.pl-fb.is-ok { color: var(--ok); } .pl-fb.is-bad { color: var(--bad); }

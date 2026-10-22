@@ -103,13 +103,19 @@
   function levelHTML(level) {
     const P = M.levelProgress(level), last = level === M.LEVELS[M.LEVELS.length - 1];
     const pct = Math.min(100, Math.round(P.share / M.LEVEL_UP * 100));
+    const lpct = Math.min(100 - pct, Math.round(P.learningShare / M.LEVEL_UP * 100));
     const next = M.LEVELS[M.LEVELS.indexOf(level) + 1];
     return '<p class="sub">You’re at level <b>' + esc(level) + "</b>. " + (last ? "That’s the top: keep your words fresh." :
       "Learn the words and verbs of " + esc(level) + " to move up to " + esc(next) + ".") + "</p>" +
-      '<div class="lvl"><span class="lvl-tag">' + esc(level) + '</span><span class="lvl-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" aria-label="Progress to the next level"><i style="width:' + pct + '%"></i></span>' +
+      '<div class="lvl"><span class="lvl-tag">' + esc(level) + '</span><span class="lvl-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" aria-label="Progress to the next level">' +
+      '<i style="width:' + pct + '%"></i><i class="learning" style="width:' + lpct + '%"></i></span>' +
       '<span class="lvl-tag next">' + esc(last ? "★" : next) + "</span></div>" +
-      '<p class="note">' + P.words + " of " + P.totalWords + " words · " + P.drills + " of " + P.totalDrills + " verb forms</p>" +
-      (P.words === 0 && M.LEVELS.indexOf(level) === 0 ? '<button class="link" data-act="placement">Already know some Italian? Take the 5-minute placement quiz →</button>' : "");
+      '<p class="note"><b>Known:</b> ' + P.words + " of " + P.totalWords + " words · " + P.drills + " of " + P.totalDrills + " verb forms" +
+      (P.learningWords + P.learningDrills ? "<br><b>On the way:</b> " + plural(P.learningWords, "word", "words") + " · " + plural(P.learningDrills, "verb form", "verb forms") +
+        " (the light part of the bar)" : "") + "</p>" +
+      (last ? "" : '<p class="note">You move up when the bar is full: 80% of ' + esc(level) + " known, counting words for 70% and verb forms for 30%.</p>") +
+      UI.howHTML() +
+      (P.words === 0 && M.LEVELS.indexOf(level) === 0 ? '<button class="link" data-act="placement">Already know some Italian? Take the 10-minute placement quiz →</button>' : "");
   }
   function mastery(items) {
     const n = items.length || 1;
@@ -193,6 +199,8 @@
       '<div class="set-row"><span>Translations in</span><span class="seg"><button data-act="lang" data-v="en" aria-pressed="' + (lang === "en") + '">English</button><button data-act="lang" data-v="es" aria-pressed="' + (lang === "es") + '">Español</button></span></div>' +
       '<div class="set-row"><span>Read words aloud</span><span class="seg"><button data-act="auto" data-v="1" aria-pressed="' + (M.S.set.auto !== false) + '">On</button><button data-act="auto" data-v="0" aria-pressed="' + (M.S.set.auto === false) + '">Off</button></span></div>' +
       '<div class="set-row"><span>Placement quiz</span><button class="btn" data-act="placement">' + (level === "A1" ? "Take it" : "Take it again") + "</button></div>" +
+      (level !== "A1" ? '<div class="set-row"><span>Go back to an easier level</span><span class="seg">' + M.LEVELS.slice(0, M.LEVELS.indexOf(level) + 1).map(l =>
+        '<button data-act="lower" data-v="' + l + '" aria-pressed="' + (l === level) + '">' + l + "</button>").join("") + "</span></div>" : "") +
       '<div class="set-row account"><span class="note">' + esc((CLOUD.user && CLOUD.user.email) || "") + '</span><button class="btn" data-act="signout">Sign out</button></div>' +
       "</div></section>",
       {
@@ -226,6 +234,13 @@
         browse: t => { UI.browse = t.dataset.v; UI.go("home"); document.getElementById("topics").scrollIntoView(); },
         topic: t => UI.go("topic", { level: t.dataset.level, i: +t.dataset.i }),
         placement: () => UI.go("placement"),
+        lower: t => {
+          const l = t.dataset.v;
+          if (l === M.S.level) return;
+          if (!t.dataset.sure) { t.dataset.sure = "1"; t.textContent = l + "? Tap again"; return; }
+          M.lowerLevel(l);
+          UI.go("home");
+        },
         start: () => UI.session(pl.words, { kind: "review" }),
         extra: () => UI.session(M.shuffle(M.wordPool().filter(w => M.prog(w).b > 0)).slice(0, 10), { kind: "review" }),
         verbs: () => UI.drill(dp.items),

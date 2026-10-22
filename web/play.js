@@ -26,6 +26,7 @@
     inp.value = inp.value.slice(0, s) + ch + inp.value.slice(e);
     inp.focus(); inp.setSelectionRange(s + ch.length, s + ch.length);
   }
+  UI.typeBox = typeBox; UI.keyAct = keyAct;
   function bar(Q) {
     const n = Q.items.length;
     return '<div class="bar"><button class="icon-btn" data-act="quit" aria-label="Stop">' + I.close + '</button>' +
@@ -71,14 +72,31 @@
     show();
   };
 
+  // wrong answers that make you think: the same kind of word (and gender and number, for nouns), from the same
+  // topic and level, that looks alike; never one that could also be right (a meaning they share)
+  const ARTS = /^(il |lo |la |i |gli |le |l['’])/i;
+  const bare = x => x.it.replace(ARTS, "");
+  const kind = x => x.verb || /^to /i.test(x.en || "") ? "verb" : x.g ? "noun" : /\s/.test(bare(x)) ? "phrase" : "word";
+  const plural = x => /^(i|gli|le) /i.test(x.it);
+  const meanings = x => new Set([x.en, x.es].filter(Boolean).join("/").toLowerCase()
+    .replace(/\([^)]*\)/g, "").split(/[\/,;]/).map(m => m.replace(/^(to|the|a|an) /, "").trim()).filter(Boolean));
   function options(w, field) {
     const val = x => field === "it" ? x.it : M.tr(x);
-    const noun = !!w.g;
-    const cands = M.shuffle(Q.pool.filter(x => x.id !== w.id && val(x) && val(x) !== val(w)));
-    // prefer distractors of the same kind (nouns with nouns, verbs with verbs)
-    const ordered = cands.filter(x => !!x.g === noun && !!x.verb === !!w.verb).concat(cands);
+    const mine = meanings(w), k = kind(w);
+    const score = x => {
+      let n = kind(x) === k ? 4 : 0;
+      if (k === "noun" && x.g === w.g) n += 2;
+      if (k === "noun" && plural(x) === plural(w)) n += 1;
+      if ((x.topic && x.topic === w.topic) || (x.list && x.list === w.list)) n += 2;
+      if (x.level && x.level === w.level) n += 1;
+      n += 3 * M.alike(bare(x), bare(w)) + (field === "it" ? 1 : 0.5) * M.alike(val(x), val(w));
+      if (M.prog(x).b > 0) n += 0.5;
+      return n + Math.random() * 1.5;
+    };
+    const cands = Q.pool.filter(x => x.id !== w.id && val(x) && val(x) !== val(w) && bare(x) !== bare(w) && ![...meanings(x)].some(m => mine.has(m)))
+      .map(x => ({ x, n: score(x) })).sort((a, b) => b.n - a.n).map(c => c.x);
     const seen = new Set([val(w)]), out = [];
-    for (const x of ordered) { if (out.length === 3) break; if (!seen.has(val(x))) { seen.add(val(x)); out.push(x); } }
+    for (const x of cands) { if (out.length === 3) break; if (!seen.has(val(x))) { seen.add(val(x)); out.push(x); } }
     return M.shuffle([w].concat(out));
   }
 
@@ -199,8 +217,12 @@
       const right = first(v.t[key][it.p]);
       const prompt = '<div class="card quad">' + head + '<div class="prompt"><span class="pers">' + PERS[it.p] + "</span> …</div></div>";
       if (it.type === "mc") {
-        const forms = [...new Set(v.t[key].filter(Boolean).map(first))].filter(f => f !== right);
-        opts = M.shuffle([right].concat(M.shuffle(forms).slice(0, 3)));
+        // two other persons of this tense, and the same person in another tense you've met
+        const others = (list, n) => M.shuffle([...new Set(list.filter(Boolean).map(first))].filter(f => f !== right)).slice(0, n);
+        const lv = M.LEVELS.indexOf(M.S.level);
+        const tenses = window.IIG_CONTENT().tenses.filter(t => t.key !== key && M.LEVELS.indexOf(t.level) <= Math.max(lv, 1)).map(t => v.t[t.key] && v.t[t.key][it.p]);
+        const fromTenses = others(tenses, 3), fromTense = others(v.t[key], 3);
+        opts = M.shuffle([right].concat([...new Set(fromTenses.slice(0, 1).concat(fromTense, fromTenses.slice(1)))].slice(0, 3)));
         body = '<p class="kicker">Which form?</p>' + prompt +
           '<div class="choices">' + opts.map((o, k) => '<button class="choice it-opt" data-act="pick" data-k="' + k + '">' + esc(o) + "</button>").join("") + "</div>";
       } else {

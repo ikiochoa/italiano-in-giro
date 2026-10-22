@@ -148,7 +148,19 @@
            nudge + '<button class="btn primary block" data-act="start">Inizia</button>'
          : '<p class="sub">All caught up. Words come back just as you’re about to forget them. A domani!</p>' +
            nudge + '<button class="btn block" data-act="extra">Practise a bit more</button>') +
-      (dp.items.length ? '<button class="btn block" data-act="verbs">Verbs · ' + plural(dp.items.length, "form", "forms") + "</button>" : "");
+      verbTileHTML();
+  }
+  // verb practice gets its own tile, so it doesn't get lost under the words
+  let dx = null;
+  function verbTileHTML() {
+    dx = dp.items.length ? dp.items : M.shuffle(M.drillPool().filter(d => M.prog(d).b > 0)).slice(0, 10);
+    if (!dx.length) return "";
+    const verbs = [...new Set(dx.map(d => d.verb.it))];
+    const tenses = [...new Set(dx.map(d => d.tense))].map(k => (window.IIG_CONTENT().tenses.find(t => t.key === k) || {}).label || k);
+    return '<button class="verb-tile" data-act="verbs"><span class="vt-badge" aria-hidden="true">io<br>tu<br>lui</span>' +
+      '<span class="t"><span class="name">' + (dp.items.length ? "Verbs for today" : "Practise your verbs") + '</span><br><span class="meta">' +
+      plural(dx.length, "form", "forms") + " · " + esc(tenses.slice(0, 2).join(", ")) + "<br>" +
+      esc(verbs.slice(0, 3).join(", ") + (verbs.length > 3 ? "…" : "")) + "</span></span>" + ICON.chev + "</button>";
   }
   function listsHTML() {
     const me = CLOUD.user && CLOUD.user.id;
@@ -243,7 +255,7 @@
         },
         start: () => UI.session(pl.words, { kind: "review" }),
         extra: () => UI.session(M.shuffle(M.wordPool().filter(w => M.prog(w).b > 0)).slice(0, 10), { kind: "review" }),
-        verbs: () => UI.drill(dp.items),
+        verbs: () => UI.drill(dx),
         race: t => UI.go("race", t.dataset.id),
         list: t => UI.go("list", t.dataset.id),
         addlist: () => UI.go("addlist"),

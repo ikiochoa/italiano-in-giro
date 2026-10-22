@@ -346,3 +346,18 @@ details.later .conj { opacity: .7; }
 /* ---------- placement quiz ---------- */
 .pl-fb { min-height: 1.6em; text-align: center; font-size: 1.05rem; }
 .pl-fb.is-ok { color: var(--ok); } .pl-fb.is-bad { color: var(--bad); }
+
+/* ---------- verb practice tile on home ---------- */
+.verb-tile {
+  width: 100%; display: flex; align-items: center; gap: 14px; margin-top: 8px; padding: 14px 14px 14px 12px; text-align: left;
+  background: var(--masc-soft); border: 1.5px solid var(--masc); border-radius: var(--r);
+}
+.verb-tile .t { flex: 1; min-width: 0; }
+.verb-tile .name { font-family: var(--f-word); font-size: 1.3rem; font-weight: 600; line-height: 1.2; }
+.verb-tile .meta { font-size: .85rem; color: var(--ink-2); }
+.verb-tile .chev { color: var(--masc); }
+.vt-badge {
+  flex: none; width: 3.2rem; padding: 6px 0; border-radius: var(--r-sm); background: var(--masc); color: var(--paper);
+  font-family: var(--f-word); font-weight: 600; font-size: .8rem; line-height: 1.25; text-align: center;
+}
+.unit-head + .btn-row, .legend + .btn-row { margin-top: 4px; }

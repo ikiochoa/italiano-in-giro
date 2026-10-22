@@ -224,15 +224,25 @@
   }
   // conjugation: due drills first, then new ones in the order a course would teach them
   // (the present of the common verbs first, then the next tense)
-  function drillPlan(size) {
+  function drillPlan(size, pool) {
     size = size || 10;
-    const pool = drillPool();
+    pool = pool || drillPool();
     const due = pool.filter(isDue).sort((a, b) => prog(a).b - prog(b).b || prog(a).due - prog(b).due).slice(0, size);
     const C = window.IIG_CONTENT(), tIdx = k => C.tenses.findIndex(t => t.key === k), vIdx = v => window.IIG_VERBS.verbs.indexOf(v);
     const fresh = pool.filter(d => prog(d).b === 0)
       .sort((a, b) => tIdx(a.tense) - tIdx(b.tense) || vIdx(a.verb) - vIdx(b.verb))
       .slice(0, Math.max(0, Math.min(4, size - due.length)));
     return { due, fresh, items: shuffle(due).concat(fresh) };
+  }
+  // practising one level or topic of your choice: what's due and some new ones, as usual;
+  // if all of it is known and nothing is due yet, a random handful to go over again
+  function practiceWords(words) {
+    const p = plan(words);
+    return p.words.length ? p.words : shuffle(words).slice(0, 10);
+  }
+  function practiceDrills(drills) {
+    const p = drillPlan(10, drills);
+    return p.items.length ? p.items : shuffle(drills).slice(0, 10);
   }
 
   // ---------- checking typed answers ----------
@@ -372,7 +382,7 @@
     plan, markStreak, streak, streakOf, setSetting, setLevel, lowerLevel, setName, setBest, setGroups, teaching, shuffle, esc,
     LEVEL_UP, levelProgress, checkLevelUp, whenLevelUp, place, tr,
     KNOWN_BOX, stepNote, alike, strip,
-    listWords, myListWords, wordPool, drillPool, drillPlan, norm, check, checkForm, say, canSpeak,
+    listWords, myListWords, wordPool, drillPool, drillPlan, practiceWords, practiceDrills, norm, check, checkForm, say, canSpeak,
     parseList, saveList, deleteList, findTopics, stats, publishStats, weekStart, isoDay, setBoard
   };
 })();

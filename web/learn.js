@@ -31,6 +31,8 @@
     const L = C().levels[arg.level], t = L && L.topics[arg.i];
     if (!t) return UI.go("home");
     const verbs = t.name === "Verbs";
+    // conjugating this level's verbs, in the tenses taught up to this level
+    const drills = verbs ? M.LEVELS.slice(0, M.LEVELS.indexOf(arg.level) + 1).flatMap(l => C().levels[l].drills).filter(d => d.verb.level === arg.level) : [];
     const list = t.words.map((w, k) => {
       const row = UI.dotHTML(w) +
         '<span class="w">' + itHTML(w) + '<br><span class="trs">' + esc(M.tr(w)) + "</span></span>";
@@ -42,10 +44,14 @@
       (verbs ? " · tap one to see how it conjugates" : "") + "</p></div>" +
       '<div class="legend"><span><i class="dot"></i>New</span><span><i class="dot learn s1"></i><i class="dot learn s2"></i>Learning</span><span><i class="dot know"></i>You know it</span>' +
       (verbs ? "" : '<span><b class="a-m">il</b>&nbsp;masculine</span><span><b class="a-f">la</b>&nbsp;feminine</span>') + "</div>" +
+      '<div class="btn-row"><button class="btn' + (verbs ? "" : " primary") + '" data-act="practise">' + (verbs ? "Practise meanings" : "Practise these words") + "</button>" +
+      (verbs && drills.length ? '<button class="btn primary" data-act="conj">Practise conjugating</button>' : "") + "</div>" +
       UI.howHTML() +
       '<ul class="words">' + list + "</ul>",
       {
         home: () => UI.go("home"),
+        practise: () => UI.session(M.practiceWords(t.words), { kind: "review", pool: t.words.length >= 4 ? t.words : L.words, back: "topic", backArg: arg }),
+        conj: () => UI.drill(M.practiceDrills(drills), { back: "topic", backArg: arg }),
         verb: b => UI.go("verb", { verb: t.words[+b.dataset.k].verb, back: arg })
       });
   };

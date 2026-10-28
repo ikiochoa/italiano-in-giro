@@ -14,7 +14,7 @@
     lists: [],     // lists added by this person or shared with their group
     groups: [],    // [{ id, name, join_code, teacher_id, role, members: [{ id, display_name, avatar_url, role, level, streak_n, streak_last, stats }] }]
     boards: {},    // last weekly race fetched per group (cloud.js), shown at once and offline
-    up: null,      // { level, at }: the last time you moved up, shown to your group
+    up: null,      // { level, from, at }: the last time you moved up, shown to your group
     sentStats: ""  // the progress summary last saved to your profile
   });
   const S = blank();
@@ -159,10 +159,11 @@
     let i = LEVELS.indexOf(S.level), moved = false;
     while (i < LEVELS.length - 1 && levelProgress(LEVELS[i]).share >= LEVEL_UP - 1e-9) { i++; moved = true; }
     if (!moved) return;
-    S.up = { level: LEVELS[i], at: new Date().toISOString() };
+    const from = S.level;
+    S.up = { level: LEVELS[i], from, at: new Date().toISOString() };
     setLevel(LEVELS[i]);
     publishStats();
-    if (onLevelUp) onLevelUp(LEVELS[i]);
+    if (onLevelUp) onLevelUp(LEVELS[i], from);
   }
   function whenLevelUp(fn) { onLevelUp = fn; }
   // placement quiz: the result becomes your level, up or down. Words and verb forms typed right are marked

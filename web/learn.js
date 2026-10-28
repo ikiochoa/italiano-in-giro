@@ -62,8 +62,9 @@
     const pers = ["io", "tu", "lui / lei", "noi", "voi", "loro"];
     const first = f => f.split("/")[0];
     const table = t => {
-      const rows = v.t[t.key].map((f, i) => f ? "<tr><th>" + pers[i] + "</th><td>" + esc(first(f)) + "</td></tr>" : "").join("");
-      return '<section class="conj"><h3>' + esc(t.label) + ' <span class="tag">' + t.level + "</span></h3><table>" + rows + "</table></section>";
+      const rows = UI.conjRows(v, t.key, pers);
+      return '<section class="conj"><h3>' + esc(t.label) + ' <span class="tag">' + t.level + "</span></h3><table>" + rows + "</table>" +
+        (UI.noForms(v, t.key) ? '<p class="note">There’s no ' + esc(t.label) + " of " + esc(v.it) + ".</p>" : "") + "</section>";
     };
     const now = C().tenses.filter(t => M.LEVELS.indexOf(t.level) <= lv), later = C().tenses.filter(t => M.LEVELS.indexOf(t.level) > lv);
     const tables = '<div class="conj-grid">' + now.map(table).join("") + "</div>" +
@@ -109,7 +110,7 @@
     function pickLevel() {
       const L = all[M.LEVELS[Q.li]];
       const words = M.shuffle(L.words.filter(w => w.en && w.es && M.tr(w, lang) && bare(w.it).split(" ").length <= 2 && !cognate(w)));
-      const drills = M.shuffle(L.drills || []).slice(0, VERB_QS).map(d => {
+      const drills = M.shuffle((L.drills || []).filter(d => !d.none)).slice(0, VERB_QS).map(d => {
         const persons = d.verb.t[d.tense].map((f, i) => f ? i : -1).filter(i => i >= 0);
         return { drill: d, p: persons[Math.floor(Math.random() * persons.length)] };
       });

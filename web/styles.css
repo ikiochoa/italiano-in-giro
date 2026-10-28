@@ -168,6 +168,47 @@ html[data-sync="offline"] .sync-note { display: block; }
 .lvl-bar { display: flex; }
 .lvl-bar i { display: block; height: 100%; background: var(--verde); }
 .lvl-bar i.learning { background: var(--ink-3); opacity: .45; }
+/* the line where you move up, and the small words / verb forms bars under the big one */
+.lvl-track { position: relative; flex: 1; display: flex; align-items: center; min-width: 0; }
+.lvl-main { flex: 1; display: flex; min-width: 0; }
+.lvl.big { margin-top: 26px; }
+.lvl.big .lvl-bar { height: 14px; }
+.lvl-pct { font-weight: 700; font-size: .85rem; color: var(--ink-2); min-width: 2.6em; text-align: right; font-variant-numeric: tabular-nums; }
+.lvl-goal { position: absolute; top: -5px; bottom: -5px; width: 0; border-left: 2px dashed var(--ink-2); transform: translateX(-1px); pointer-events: none; }
+.lvl-goal b { position: absolute; bottom: calc(100% + 3px); left: 0; transform: translateX(-50%); font-size: .75rem; line-height: 1; padding: 3px 7px; border-radius: 99px; background: var(--line); color: var(--ink-2); white-space: nowrap; }
+.lvl-goal b::before { content: "⚑ "; }
+.lvl-goal.reached { border-left-style: solid; border-color: var(--verde); }
+.lvl-goal.reached b { background: var(--verde); color: var(--paper); }
+.lvl-togo { margin-top: 6px; }
+.lvl-parts { display: grid; gap: 8px; margin: 12px 0 4px; }
+.lvl-part { display: grid; grid-template-columns: 6.2em 1fr auto; align-items: center; gap: 10px; }
+.lvl-part .label { margin: 0; }
+.lvl-part .lvl-bar { height: 7px; }
+.lvl-part .lvl-goal { top: -3px; bottom: -3px; }
+.lvl-part .meta { font-size: .8rem; color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 4.8em; text-align: right; }
+
+/* level-up celebration: confetti, and the dot hopping up the ladder */
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+.confetti i { position: absolute; top: -12px; width: 8px; height: 13px; border-radius: 2px; opacity: 0; animation: fall 2.6s cubic-bezier(.25,.6,.4,1) forwards; }
+@keyframes fall {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), 105vh) rotate(var(--r)); }
+}
+.levelup .bravo, .levelup .score { animation: rise .5s ease-out both; }
+.levelup .score { animation-delay: .15s; }
+.ladder { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding-top: 16px; }
+.ladder span { text-align: center; font-weight: 700; font-size: .85rem; padding: 5px 0; border-radius: 99px; background: var(--line); color: var(--ink-2); }
+.ladder span.past { background: var(--ok-soft); color: var(--verde); }
+.ladder span.now { background: var(--verde); color: var(--paper); animation: pop .45s 1.3s ease-out both; }
+.ladder-dot { position: absolute; top: 0; left: var(--to); width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--rosso);
+  animation: hop 1.2s .3s cubic-bezier(.5,0,.3,1) both; }
+@keyframes hop {
+  0% { left: var(--from); transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+  100% { left: var(--to); transform: translateY(0); }
+}
+@keyframes pop { 0% { transform: scale(1); background: var(--line); color: var(--ink-2); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
 .today .link { justify-self: start; text-align: left; }
 
 /* ---------- topics and words ---------- */

@@ -99,21 +99,32 @@
       '<button class="danger" data-act="' + (teacher ? "delgroup" : "leave") + '" data-id="' + esc(g.id) + '">' + (teacher ? "Delete this group" : "Leave this group") + "</button></div>";
   }
 
-  // progress towards the next level
+  // progress towards the next level: the bars run from 0 to 100% of the level, with a line where you move up
+  function goalBar(share, learningShare, label, goal) {
+    const pct = Math.min(100, Math.round(share * 100));
+    const lpct = Math.min(100 - pct, Math.round(learningShare * 100));
+    return '<span class="lvl-track"><span class="lvl-bar"><i style="width:' + pct + '%"></i><i class="learning" style="width:' + lpct + '%"></i></span>' +
+      (goal ? '<span class="lvl-goal' + (share >= M.LEVEL_UP - 1e-9 ? " reached" : "") + '" style="left:' + Math.round(M.LEVEL_UP * 100) + '%">' +
+        (label ? "<b>" + esc(label) + "</b>" : "") + "</span>" : "") + "</span>";
+  }
   function levelHTML(level) {
     const P = M.levelProgress(level), last = level === M.LEVELS[M.LEVELS.length - 1];
-    const pct = Math.min(100, Math.round(P.share / M.LEVEL_UP * 100));
-    const lpct = Math.min(100 - pct, Math.round(P.learningShare / M.LEVEL_UP * 100));
-    const next = M.LEVELS[M.LEVELS.indexOf(level) + 1];
+    const next = M.LEVELS[M.LEVELS.indexOf(level) + 1], goal = Math.round(M.LEVEL_UP * 100);
+    const pct = Math.min(100, Math.round(P.share * 100)), toGo = Math.max(0, goal - pct);
+    const part = (name, n, total, learning) => '<div class="lvl-part"><span class="label">' + name + "</span>" +
+      goalBar(total ? n / total : 1, total ? learning / total : 0, "", !last) + '<span class="meta">' + n + " / " + total + "</span></div>";
     return '<p class="sub">You’re at level <b>' + esc(level) + "</b>. " + (last ? "That’s the top: keep your words fresh." :
-      "Learn the words and verbs of " + esc(level) + " to move up to " + esc(next) + ".") + "</p>" +
-      '<div class="lvl"><span class="lvl-tag">' + esc(level) + '</span><span class="lvl-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" aria-label="Progress to the next level">' +
-      '<i style="width:' + pct + '%"></i><i class="learning" style="width:' + lpct + '%"></i></span>' +
-      '<span class="lvl-tag next">' + esc(last ? "★" : next) + "</span></div>" +
-      '<p class="note"><b>Known:</b> ' + P.words + " of " + P.totalWords + " words · " + P.drills + " of " + P.totalDrills + " verb forms" +
-      (P.learningWords + P.learningDrills ? "<br><b>On the way:</b> " + plural(P.learningWords, "word", "words") + " · " + plural(P.learningDrills, "verb form", "verb forms") +
-        " (the light part of the bar)" : "") + "</p>" +
-      (last ? "" : '<p class="note">You move up when the bar is full: 80% of ' + esc(level) + " known, counting words for 70% and verb forms for 30%.</p>") +
+      "Fill the bar up to the <b>" + esc(next) + "</b> line to move up.") + "</p>" +
+      '<div class="lvl big"><span class="lvl-tag">' + esc(level) + "</span>" +
+      '<span class="lvl-main" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" aria-label="' + esc(level) + " known" + (last ? "" : ", " + esc(next) + " at " + goal + "%") + '">' +
+      goalBar(P.share, P.learningShare, last ? "" : next, !last) + "</span>" +
+      '<span class="lvl-pct">' + pct + "%</span></div>" +
+      (last ? "" : '<p class="note lvl-togo">' + (toGo ? "<b>" + toGo + "%</b> to go to " + esc(next) : "Ready for " + esc(next) + "!") + "</p>") +
+      '<div class="lvl-parts">' + part("Words", P.words, P.totalWords, P.learningWords) + part("Verb forms", P.drills, P.totalDrills, P.learningDrills) + "</div>" +
+      (P.learningWords + P.learningDrills ? '<p class="note"><b>On the way:</b> ' + plural(P.learningWords, "word", "words") + " · " + plural(P.learningDrills, "verb form", "verb forms") +
+        " (the light part of the bars)</p>" : "") +
+      (last ? "" : '<p class="note">The big bar mixes the two: words count for 70% and verb forms for 30%. Get both small bars to their line (' + goal +
+        "% of " + esc(level) + "’s words and verb forms) and you’re there. Lots of words can make up for fewer verbs, and the other way round.</p>") +
       UI.howHTML() +
       (P.words === 0 && M.LEVELS.indexOf(level) === 0 ? '<button class="link" data-act="placement">Already know some Italian? Take the 10-minute placement quiz →</button>' : "");
   }
@@ -177,6 +188,8 @@
   }
 
   UI.screens.home = function () {
+    const missed = UI.missedLevelUp && UI.missedLevelUp();
+    if (missed) return UI.go("levelup", { level: missed.level });
     const p = profile(), name = firstName();
     const lang = M.S.set.lang, level = M.S.level;
     const known = Object.values(M.S.p).filter(x => x.b >= 3).length;

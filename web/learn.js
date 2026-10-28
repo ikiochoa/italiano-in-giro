@@ -193,14 +193,38 @@
   }
 
   // ---------- level up ----------
+  // shown once per level-up on each device: the time of the last level-up seen is kept here
+  const seenKey = () => "iig.upSeen." + ((window.CLOUD && CLOUD.user && CLOUD.user.id) || "");
+  const seen = () => { try { return localStorage.getItem(seenKey()); } catch (e) { return null; } };
+  const markSeen = up => { try { localStorage.setItem(seenKey(), up.at); } catch (e) {} };
+  // a level-up that hasn't been celebrated here yet (from another device, or the app closed mid-session)
+  UI.missedLevelUp = function () {
+    const up = M.S.up;
+    if (!up || up.level !== M.S.level || seen() === up.at || Date.now() - new Date(up.at) > 7 * 86400000) return null;
+    return up;
+  };
   // during practice the level-up waits until the session's result screen has been seen
   M.whenLevelUp(level => {
     if (UI.current === "session" || UI.current === "drill") UI.pendingLevel = level;
     else UI.go("levelup", { level });
   });
   UI.screens.levelup = function (arg) {
+    const up = M.S.up && M.S.up.level === arg.level ? M.S.up : null;
+    if (up) markSeen(up);
+    const to = M.LEVELS.indexOf(arg.level);
+    const from = up && up.from && M.LEVELS.indexOf(up.from) >= 0 ? M.LEVELS.indexOf(up.from) : Math.max(0, to - 1);
+    const n = M.LEVELS.length, at = i => ((i + 0.5) / n * 100).toFixed(2) + "%";
+    // confetti in the colours of the flag, spread across the screen
+    const colors = ["var(--verde)", "var(--rosso)", "var(--line)", "var(--verde)", "var(--rosso)", "var(--fem)", "var(--masc)"];
+    const confetti = Array.from({ length: 36 }, (_, i) =>
+      '<i style="left:' + ((i * 37) % 100) + "%;background:" + colors[i % colors.length] + ";animation-delay:" + ((i * 53) % 900) + "ms;--x:" +
+        (((i * 29) % 80) - 40) + "px;--r:" + ((i * 97) % 720) + 'deg"></i>').join("");
     UI.render(
-      UI.topBar() + '<section class="done"><p class="bravo">Evviva!</p><p class="score">You’ve reached ' + esc(arg.level) + "</p>" +
+      UI.topBar() + '<div class="confetti" aria-hidden="true">' + confetti + "</div>" +
+      '<section class="done levelup"><p class="bravo">Evviva!</p><p class="score">You’ve reached ' + esc(arg.level) + "</p>" +
+      '<div class="ladder" style="--from:' + at(from) + ";--to:" + at(to) + '" role="img" aria-label="From ' + esc(M.LEVELS[from]) + " to " + esc(arg.level) + '">' +
+        M.LEVELS.map((l, i) => '<span class="' + (i < to ? "past" : i === to ? "now" : "") + '">' + l + "</span>").join("") +
+        '<i class="ladder-dot"></i></div>' +
       '<div class="tricolore" aria-hidden="true"><i></i><i></i><i></i></div>' +
       '<p class="note">New words, and new tenses for the verbs you already know, are waiting for you. Your group can see it too.</p>' +
       '<button class="btn primary block" data-act="home">Andiamo!</button></section>',

@@ -74,7 +74,9 @@
     V.verbs.forEach(v => {
       V.tenses.forEach(t => {
         const at = LEVELS.indexOf(v.level) > LEVELS.indexOf(t.level) ? v.level : t.level;
-        levels[at].drills.push({ id: "c:" + v.it + ":" + t.key, verb: v, tense: t.key, level: at });
+        // some verbs have no forms in a tense (potere, dovere: no imperative); that's shown once, never drilled
+        const none = !(v.t[t.key] || []).some(Boolean);
+        levels[at].drills.push({ id: "c:" + v.it + ":" + t.key, verb: v, tense: t.key, level: at, none });
       });
     });
   }

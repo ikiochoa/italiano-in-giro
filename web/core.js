@@ -86,6 +86,15 @@
     emit("progress", { word_id: w.id, box: p.b, due: p.due, ok: p.ok, ko: p.ko });
     checkLevelUp();
   }
+  // a tense the verb doesn't have: once its card has been seen it counts as known and never comes back
+  function markSeen(d) {
+    const p = Object.assign({ ok: 0, ko: 0 }, S.p[d.id], { b: KNOWN_BOX, due: today() + 36500 });
+    p.ok = Math.max(1, p.ok);
+    S.p[d.id] = p;
+    save();
+    emit("progress", { word_id: d.id, box: p.b, due: p.due, ok: p.ok, ko: p.ko });
+    checkLevelUp();
+  }
   function logAnswer(w, correct, kind) { emit("answer", { word_id: w.id, correct: !!correct, kind }); }
   function logSession(row) { emit("session", row); publishStats(); }
 
@@ -243,7 +252,7 @@
   }
   function practiceDrills(drills) {
     const p = drillPlan(10, drills);
-    return p.items.length ? p.items : shuffle(drills).slice(0, 10);
+    return p.items.length ? p.items : shuffle(drills.filter(d => !d.none)).slice(0, 10);
   }
 
   // ---------- checking typed answers ----------
@@ -379,7 +388,7 @@
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   window.IIG = {
-    S, LEVELS, save, on, useUser, applyServer, today, prog, state, isDue, grade, logAnswer, logSession,
+    S, LEVELS, save, on, useUser, applyServer, today, prog, state, isDue, grade, markSeen, logAnswer, logSession,
     plan, markStreak, streak, streakOf, setSetting, setLevel, lowerLevel, setName, setBest, setGroups, teaching, shuffle, esc,
     LEVEL_UP, levelProgress, checkLevelUp, whenLevelUp, place, tr,
     KNOWN_BOX, stepNote, alike, strip,

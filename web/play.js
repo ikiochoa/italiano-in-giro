@@ -189,6 +189,8 @@
     UI.current = "drill";
     const list = [];
     items.forEach(d => {
+      // a tense this verb doesn't have: show the empty table once, nothing to drill
+      if (d.none) { if (M.prog(d).b === 0) list.push({ d, type: "table" }); return; }
       const persons = d.verb.t[d.tense].map((f, i) => f ? i : -1).filter(i => i >= 0);
       if (M.prog(d).b === 0) list.push({ d, type: "table" });
       list.push({ d, type: M.prog(d).b >= 3 ? "type" : "mc", p: pick(persons) });
@@ -200,8 +202,16 @@
   const tenseLabel = key => (window.IIG_CONTENT().tenses.find(t => t.key === key) || {}).label || key;
   const first = f => f.split("/")[0];
 
+  // the imperative has only tu, noi, voi; a tense the verb lacks shows those persons with a dash
+  const noForms = (v, key) => !(v.t[key] || []).some(Boolean);
+  function conjRows(v, key, pers) {
+    const fs = v.t[key] || [], none = noForms(v, key), imp = key === "imperativo";
+    return fs.map((f, i) => f ? "<tr><th>" + pers[i] + "</th><td>" + esc(first(f)) + "</td></tr>"
+      : none && (!imp || [1, 3, 4].includes(i)) ? "<tr><th>" + pers[i] + '</th><td class="none">–</td></tr>' : "").join("");
+  }
+  UI.noForms = noForms; UI.conjRows = conjRows;
   function tableHTML(v, key) {
-    return '<table class="conj-t">' + v.t[key].map((f, i) => f ? "<tr><th>" + PERS[i] + "</th><td>" + esc(first(f)) + "</td></tr>" : "").join("") + "</table>";
+    return '<table class="conj-t">' + conjRows(v, key, PERS) + "</table>";
   }
 
   function showDrill() {
@@ -211,6 +221,7 @@
     let body = "", opts = null;
     if (it.type === "table") {
       body = '<p class="kicker">New: ' + esc(tenseLabel(key)) + '</p><div class="card quad">' + head + '<p class="note">' + esc(M.tr(v)) + "</p>" + tableHTML(v, key) +
+        (it.d.none ? '<p class="note">There’s no ' + esc(tenseLabel(key)) + " of " + esc(v.it) + ". Nothing to practise here.</p>" : "") +
         (v.aux === "essere" && /passato|trapassato|anteriore/.test(key) ? '<p class="note">With essere the ending agrees: -o / -a, -i / -e.</p>' : "") + "</div>" +
         '<button class="btn primary block" data-act="next">Capito</button>';
     } else {
@@ -233,7 +244,7 @@
     }
     UI.render(bar(D) + '<div class="ex">' + body + "</div>", {
       quit: () => UI.go(D.opts.back || "home", D.opts.backArg),
-      next: () => { D.i++; showDrill(); },
+      next: () => { if (it.d.none) M.markSeen(it.d); D.i++; showDrill(); },
       pick: t => {
         const ok = opts[+t.dataset.k] === it.right;
         app.querySelectorAll(".choice").forEach((b, k) => {
@@ -277,7 +288,7 @@
     M.logSession({ kind: "verbs", list_id: null, started_at: D.started, answered: D.answered, correct: D.correct, points: pts });
     UI.render(
       UI.topBar() + '<section class="done"><p class="bravo">' + (firstOk === total ? "Perfetto!" : "Bravo!") + "</p>" +
-      '<p class="score">' + firstOk + " of " + UI.plural(total, "verb form", "verb forms") + " right first time</p>" +
+      (total ? '<p class="score">' + firstOk + " of " + UI.plural(total, "verb form", "verb forms") + " right first time</p>" : "") +
       '<p class="points">+' + pts + " points</p>" +
       '<button class="btn primary block" data-act="home">Continua</button></section>',
       { home: () => UI.afterPractice(D.opts.back, D.opts.backArg) });

@@ -159,7 +159,7 @@
            nudge + '<button class="btn primary block" data-act="start">Inizia</button>'
          : '<p class="sub">All caught up. Words come back just as you’re about to forget them. A domani!</p>' +
            nudge + '<button class="btn block" data-act="extra">Practise a bit more</button>') +
-      verbTileHTML();
+      verbTileHTML() + UI.abcTileHTML();
   }
   // verb practice gets its own tile, so it doesn't get lost under the words
   let dx = null;
@@ -269,6 +269,7 @@
         start: () => UI.session(pl.words, { kind: "review" }),
         extra: () => UI.session(M.shuffle(M.wordPool().filter(w => M.prog(w).b > 0)).slice(0, 10), { kind: "review" }),
         verbs: () => UI.drill(dx),
+        abc: () => UI.go("abc"),
         race: t => UI.go("race", t.dataset.id),
         list: t => UI.go("list", t.dataset.id),
         addlist: () => UI.go("addlist"),

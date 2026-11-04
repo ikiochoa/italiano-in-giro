@@ -404,3 +404,34 @@ details.later .conj { opacity: .7; }
   font-family: var(--f-word); font-weight: 600; font-size: .8rem; line-height: 1.25; text-align: center;
 }
 .unit-head + .btn-row, .legend + .btn-row { margin-top: 4px; }
+
+/* ---------- alphabet ---------- */
+.abc-tile-home { background: var(--ok-soft); border-color: var(--verde); }
+.abc-tile-home .vt-badge { background: var(--verde); }
+.abc-tile-home .chev { color: var(--verde); }
+.verb-tile + .verb-tile { margin-top: 2px; }
+.abc-card { gap: 10px; }
+.abc-big { display: flex; align-items: center; gap: 16px; }
+.abc-big > .it { font-size: 2.8rem; line-height: 1; min-width: 2.2em; }
+.abc-name { display: grid; }
+.abc-name .it { font-size: 1.5rem; line-height: 1.2; }
+.abc-ex .it { font-size: 1.1rem; }
+.abc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(3.6rem, 1fr)); gap: 6px; }
+.abc-tile { display: grid; place-items: center; gap: 0; padding: 8px 2px 6px; border-radius: var(--r-sm); border: 1.5px solid var(--line); background: var(--paper); min-height: 58px; }
+.abc-tile b { font-family: var(--f-word); font-size: 1.35rem; line-height: 1.1; }
+.abc-tile span { font-size: .7rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.abc-tile[aria-pressed="true"] { border-color: var(--verde); background: var(--ok-soft); }
+.abc-tile.foreign { border-style: dashed; }
+.abc-sub { margin-top: 6px; }
+.tricky li { align-items: flex-start; }
+.tricky .it { font-size: 1.1rem; }
+.tricky .note { margin-top: 2px; }
+.tricky-ex { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font-family: var(--f-word); font-weight: 600; }
+span.chip { padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); }
+.speak.chip { height: 34px; padding: 0 12px; font-size: .95rem; }
+.speak.chip svg { width: 15px; height: 15px; }
+.spelled { font-family: var(--f-word); font-weight: 600; font-size: 1.15rem; color: var(--ink-2); overflow-wrap: anywhere; }
+.abc-choices { grid-template-columns: 1fr 1fr; }
+.abc-choices .choice { text-align: center; font-family: var(--f-word); font-weight: 600; font-size: 1.6rem; }
+.done .btn-row .btn { min-width: 0; }

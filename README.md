@@ -13,6 +13,7 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
   - `play.js` – practice sessions (words) and the conjugation drill
   - `lists.js` – your own word lists; teachers can give a list to their group
   - `race.js` – the weekly race, progress side by side, and the teacher's weekly challenge
+  - `alphabet.js` – the alphabet: letter names and sounds, tricky spellings, and three spelling games
   - `content.js` + `levels/A1.js` … `levels/C2.js` – the built-in CILS word lists
   - `verbs.js` – 149 common verbs with conjugations (generated, see below)
   - `topics.js` – ready-made topic packs (flat renovation, doctor, bank…) suggested when you add words
@@ -52,6 +53,12 @@ CILS levels (A1 to C2), your own topic lists, a teacher who can give lists to a 
 - **Your own lists:** type a topic and the app suggests the closest of about 40 ready-made packs (and matching CILS topics).
   For anything else, Claude writes a list for that topic at your level. You check the words, remove the ones you
   don't want, and save. **✨ More words** on a list asks Claude for more on the same topic. Or paste your own words.
+- **Alphabet:** the green tile on the home screen. Tap a letter to hear its name, with how to say it, an example word and
+  the city Italians use on the phone (B come Bologna), plus a card on the tricky sounds (c/ci, g/gi, gli, gn, sc, doubles, h).
+  Three games: **letter match** (hear a letter and find it, or name the one you see), **spell it to me** (the voice spells
+  a word letter by letter, "ci, a, doppia esse, a", and you write it) and **hear it, write it** (hear a word and write it,
+  leaning on words with tricky spellings). Words come from your level and your lists. They give points and keep your streak,
+  but don't change your level.
 - **Points:** 10 per answer right first time plus 20 for finishing, saved with each session for the weekly race.
 
 ## Motivation
